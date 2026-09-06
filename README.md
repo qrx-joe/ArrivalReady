@@ -27,16 +27,36 @@
 
 ## 快速开始
 
-当前仓库仅有文档，尚无可运行应用。实施从 [执行方案 B01](docs/05_EXECUTION_PLAN_v0.1.md) 开始；原文范围与状态冲突见审查记录，方案中的建议不代表暂定决策已获确认。
+当前状态：工程基线（B04）已建立——三端空壳 + 契约 + 离线 CI 可跑；业务功能从 B05 起交付。
 
-工程基线建立后（见 [TODO.md](TODO.md) T-003），目标形态：
+前置（Windows）：
+
+- Go 1.27+（`go.mod` 含 `toolchain go1.27.1`，首次构建自动下载）、Node 24 + pnpm 10、Python 3.13 + uv、Docker Desktop（PostgreSQL 18 + MinIO）；
+- 大陆网络建议设置 `GOPROXY=https://goproxy.cn,direct`（Makefile 已内置）；
+- Windows 默认无 `make`：优先用 PowerShell 入口 `scripts\dev.ps1`。
+
+```powershell
+# 本地复现全部离线检查（契约/三端 lint+type+test+build，无需模型 key 与数据库）
+.\scripts\dev.ps1 ci
+
+# 启动基础设施 + 三端（各开一个终端窗口）
+Copy-Item .env.example .env   # 首次
+.\scripts\dev.ps1 all
+```
+
+Git Bash / WSL 下等价入口：
 
 ```bash
-make dev        # PostgreSQL + MinIO + Go API + AI Service + Web
-make test       # 三端测试
-make lint       # 三端静态检查
-make migrate    # 数据库迁移
+make contracts   # 契约正反例离线校验
+make lint        # 三端静态检查
+make test        # 三端测试
+make infra       # PostgreSQL 18 + MinIO（compose，健康检查就绪）
+make api         # Go API :8080（/healthz /readyz）
+make ai          # AI Service :8100
+make web         # Web :3000
 ```
+
+> 注：`make dev`/`migrate` 将随 B05（身份与迁移）落地；数据卷受保护，任何情况不要执行 `docker compose down -v`。
 
 ## 维护规则
 

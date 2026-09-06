@@ -12,6 +12,17 @@
 
 ## 1. 协作会话记录
 
+### S-6 ｜ 2026-09-07 ｜ 执行 B02/B03/B04：规则、契约与工程基线
+- **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
+- **请求**：继续执行方案，直至外部输入阻塞；保持「一步一审一提交」并推送 GitHub。
+- **结果**：
+  - B02（PR #3）：IRRS 0.1.0 首批 10 条规则草稿（D1–D7，draft）、规则 Schema、评分语义 ADR-0002（草案）、6 个 fixture 与离线校验脚本；
+  - B03（PR #4）：OpenAPI 3.1 全量 13 端点、JSON Schema 四件套（含归一化 bbox locator 与 provider envelope）、状态迁移表（四轴分离）、15 个共享 fixture；
+  - B04（PR #5）：Go/FastAPI/Next.js 三端空壳 + liveness/readiness、compose、Makefile 与 dev.ps1 等价入口、离线 CI 与 PR 模板；版本经官方渠道复核（Next 16.3.3 / Go 1.27.1 / React 19.2.8）。
+- **验证**：三端 lint/type/test/build 与契约校验全部在本机实际跑通（gofmt/vet/go test、ruff/mypy/pytest、biome/tsc/vitest/build、fixtures 21/21）；`docker compose up` 全栈探活**受阻**——本机 Docker 引擎持续 500（进程在、管道无响应），待 PO 重启后补做。
+- **产物**：standards/irrs/0.1.0/、contracts/、services/api、services/ai、apps/web、infra 配置、.github/；T-002 完成、T-003 受阻项登记。
+- **遗留问题**：D-006～D-009、D-011/D-012 仍待 PO；Docker 引擎恢复后补 T-003 验证；MinIO digest pin 待 compose 首跑；下一批 B05（身份/组织隔离）依赖 T-003 数据库可用。
+
 ### S-5 ｜ 2026-09-07 ｜ 执行 B01：范围对齐与文档契约修正
 - **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
 - **请求**：审查现有文档后开始执行方案，按「执行一步、审查一次、提交一次」推进，并推送 GitHub（qrx-joe/ArrivalReady）。

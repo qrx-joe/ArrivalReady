@@ -35,6 +35,7 @@
 | 模型 | Provider Adapter（**1 主 + 1 备**） | 供应商待定（D-007） | 视觉 / 结构化 / 嵌入 |
 
 > 版本核对记录：Next.js 16.3.3 与 Go 1.27 已于 2026-09-07 经官方渠道核实；Python / PostgreSQL / React 版本在工程基线日（T-003）以官方 release 页最终 pin。
+> B04 复核（2026-09-07，工程基线日）：Next.js 16.3.3（官方 blog，Active LTS，修复 2 个 Critical）✅；Go 1.27.1（go.dev release notes，2026-09-01 发布）✅，本机工具链 1.26.2 经 go.mod toolchain 指令自动升级；React 19.2.8（npm registry 19.2 线最新）✅；Python 3.13.6 本机 + CI 3.13 ✅。PostgreSQL `postgres:18` 与 MinIO 镜像 tag/digest 在本机 Docker 引擎恢复后执行 `compose up` 时落 pin（当前 MinIO 为 dev-only 浮动 tag，禁止上生产）。
 
 ## 2.2 为什么这套选型贴合当前（2025–2026）行业主流
 
