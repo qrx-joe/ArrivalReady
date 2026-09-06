@@ -41,7 +41,8 @@ typecheck: ## 三端类型检查（go build + mypy + tsc）
 	cd apps/web && pnpm typecheck
 
 test: ## 三端测试（go test + pytest + vitest）
-	cd services/api && go test ./...
+	# -p 1: Go 包共享同一个一次性数据库；并行会让迁移循环测试 drop 掉其他包正用的表
+	cd services/api && go test -p 1 ./...
 	cd services/ai && uv run pytest -q
 	cd apps/web && pnpm test
 

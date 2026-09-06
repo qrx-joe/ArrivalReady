@@ -58,7 +58,7 @@ switch ($Target) {
         if ($LASTEXITCODE -ne 0) { Pop-Location; exit 1 }
         Push-Location services/api
         go vet ./...; if ($LASTEXITCODE -ne 0) { Pop-Location; Pop-Location; exit 1 }
-        go test ./...; if ($LASTEXITCODE -ne 0) { Pop-Location; Pop-Location; exit 1 }
+        go test -p 1 ./...; if ($LASTEXITCODE -ne 0) { Pop-Location; Pop-Location; exit 1 }
         go build ./...; if ($LASTEXITCODE -ne 0) { Pop-Location; Pop-Location; exit 1 }
         Pop-Location
         Push-Location services/ai
