@@ -6,7 +6,7 @@ SHELL := /bin/bash
 GOPROXY ?= https://goproxy.cn,direct
 export GOPROXY
 
-.PHONY: help infra down api ai web lint test typecheck contracts ci
+.PHONY: help infra down api ai web lint test typecheck contracts migrate ci
 
 help: ## 显示可用目标
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -17,6 +17,9 @@ infra: ## 启动 PostgreSQL + MinIO（compose，带健康检查）
 
 down: ## 停止基础设施（保留数据卷；绝不使用 down -v）
 	docker compose down
+
+migrate: ## 对 DATABASE_URL 执行迁移 up（ADR-0003；不自动迁移生产）
+	cd services/api && go run ./cmd/migrate up
 
 api: ## 前台运行 Go API (:8080)
 	cd services/api && go run ./cmd/api

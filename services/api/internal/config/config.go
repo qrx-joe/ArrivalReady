@@ -2,9 +2,9 @@
 //
 // Contract:
 //   - Missing required-for-role configuration is surfaced as an explicit,
-//     per-variable error list. The API still BOOTS with a missing DATABASE_URL
-//     (liveness must not depend on infrastructure); readiness reports the gap
-//     instead of silently answering 200 (B04 verify: 缺配置能明确报错).
+//     per-variable error list. The API still BOOTS with degraded config
+//     (liveness must not depend on infrastructure); readiness and protected
+//     routes report the gap instead of silently answering 200 (B04/B05).
 //   - No secrets are ever logged; callers log summaries, not raw values.
 package config
 
@@ -26,8 +26,31 @@ type Config struct {
 	// AIServiceURL is the internal AI service base URL (AI_SERVICE_URL).
 	// Empty is tolerated at this stage; audit jobs (B07) will hard-require it.
 	AIServiceURL string
-	// Env selects log verbosity (ENV: "dev" or "production").
+	// Env selects log verbosity and identity gates (ENV: "dev" or "production").
 	Env string
+
+	// OIDC settings (B05). All three are required to verify real tokens.
+	OIDCIssuer   string
+	OIDCAudience string
+	OIDCJWKSURL  string
+
+	// TestIdentity gates (auth.TestIdentityConfig). Secret is sensitive:
+	// consume it only through code, never log it.
+	TestIdentityEnabled string
+	TestIdentitySecret  string
+}
+
+// AuthMode reports which authenticator the process will install, so main can
+// decide fail-closed behaviour without duplicating the gate logic.
+func (c Config) AuthMode() string {
+	switch {
+	case c.Env == "dev" && c.TestIdentityEnabled == "1":
+		return "test-identity"
+	case c.OIDCIssuer != "" && c.OIDCAudience != "" && c.OIDCJWKSURL != "":
+		return "oidc"
+	default:
+		return "unconfigured"
+	}
 }
 
 // Load reads the environment and reports every missing-but-expected variable
@@ -36,21 +59,31 @@ func Load() (Config, error) {
 	var problems []string
 
 	cfg := Config{
-		Port:         envOr("PORT", "8080"),
-		DatabaseURL:  os.Getenv("DATABASE_URL"),
-		AIServiceURL: os.Getenv("AI_SERVICE_URL"),
-		Env:          envOr("ENV", "dev"),
+		Port:                envOr("PORT", "8080"),
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		AIServiceURL:        os.Getenv("AI_SERVICE_URL"),
+		Env:                 envOr("ENV", "dev"),
+		OIDCIssuer:          os.Getenv("OIDC_ISSUER"),
+		OIDCAudience:        os.Getenv("OIDC_AUDIENCE"),
+		OIDCJWKSURL:         os.Getenv("OIDC_JWKS_URL"),
+		TestIdentityEnabled: os.Getenv("ARRIVAL_ENABLE_TEST_IDENTITY"),
+		TestIdentitySecret:  os.Getenv("ARRIVAL_TEST_IDENTITY_SECRET"),
 	}
 
 	if strings.TrimSpace(cfg.Port) == "" {
 		problems = append(problems, "PORT is set but empty")
 	}
-	if v := os.Getenv("DATABASE_URL"); v == "" {
+	if cfg.DatabaseURL == "" {
 		problems = append(problems,
 			"DATABASE_URL is not set: /readyz will report 503 until PostgreSQL is configured")
 	}
 	if v := os.Getenv("ENV"); v != "" && v != "dev" && v != "production" {
 		problems = append(problems, fmt.Sprintf("ENV must be \"dev\" or \"production\", got %q", v))
+	}
+	if cfg.AuthMode() == "unconfigured" {
+		problems = append(problems,
+			"no authenticator available: set OIDC_ISSUER/OIDC_AUDIENCE/OIDC_JWKS_URL "+
+				"(the local test identity is dev-only and cannot be a production fallback)")
 	}
 
 	if len(problems) > 0 {
