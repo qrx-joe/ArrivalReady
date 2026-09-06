@@ -44,9 +44,17 @@ func intEnv(t *testing.T) (*Service, *store.DB, auth.Actor) {
 	if err != nil {
 		t.Fatalf("storage client: %v", err)
 	}
-	// Dev/test convenience: production buckets exist via deployment, never code.
-	if err := st.EnsureBucket(context.Background()); err != nil {
-		t.Fatalf("ensure bucket: %v", err)
+	// CI starts the MinIO container without a healthcheck (newer images have
+	// no curl/shell), so readiness is polled here: BucketExists up to 15s.
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		if err := st.EnsureBucket(context.Background()); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("minio not ready within 15s")
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	svc := NewService(db, st)
