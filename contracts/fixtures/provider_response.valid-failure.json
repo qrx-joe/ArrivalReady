@@ -1,0 +1,38 @@
+{
+  "outcome": "failure",
+  "metadata": {
+    "job_id": "01912345-6789-7abc-9def-0123456789ad",
+    "run_id": "01912345-6789-7abc-9def-0123456789ae",
+    "attempt_token": "01912345-6789-7abc-9def-0123456789af",
+    "provider": "qwen-vl",
+    "model": "qwen-vl-max",
+    "model_version": "2026-08-15",
+    "prompt_version": "assessment/v1",
+    "schema_version": "assessment-1.0",
+    "input_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requested_at": "2026-09-07T10:05:00Z"
+  },
+  "error": {
+    "code": "schema_invalid_after_repair",
+    "retryable": false,
+    "message": "structured output failed schema validation after 1 repair attempt; no assessments persisted",
+    "attempts": [
+      {
+        "provider": "doubao",
+        "model": "doubao-seed-1.6-vision",
+        "kind": "initial",
+        "latency_ms": 3900,
+        "usage": { "prompt_tokens": 1830, "completion_tokens": 305 },
+        "cost": { "known": false }
+      },
+      {
+        "provider": "qwen-vl",
+        "model": "qwen-vl-max",
+        "kind": "fallback",
+        "latency_ms": 5100,
+        "usage": { "prompt_tokens": 1855, "completion_tokens": 288 },
+        "cost": { "known": false }
+      }
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arrivalready.dev/schemas/normalized-evidence-1.0.json",
+  "title": "NormalizedEvidence",
+  "description": "Stage 1 (Ingest) output: one evidence item after validation, in the exact shape the AI service receives in a job payload. Produced by the Go API from validated uploads; the AI service must treat it as read-only input. Field semantics mirror TECH_SPEC §5.4 with the R-05/R-07 refinements: identities are UUIDs, hashes are the source of truth for dedup and input snapshots.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_id", "project_id", "type", "sha256", "mime_type",
+    "journey_stage", "processing_status", "captured_at"
+  ],
+  "properties": {
+    "evidence_id": { "$ref": "#/$defs/uuid" },
+    "project_id": { "$ref": "#/$defs/uuid" },
+    "type": {
+      "enum": ["image", "pdf", "url", "text"],
+      "description": "Evidence type per PRD P0-2. For 'url' this object describes a snapshot (or a registration-only placeholder when snapshotting is not performed); live fetching never happens implicitly."
+    },
+    "source_uri": {
+      "type": "string",
+      "description": "Original source reference (original filename as metadata, or the registered URL). Never a long-lived public link."
+    },
+    "object_key": {
+      "type": "string",
+      "description": "Storage object key inside the private bucket. Required when type != text."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Hash of the stored bytes (or of the snapshot/text content). Used for dedup, job input manifests and audit-comparison keys."
+    },
+    "mime_type": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]*/[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]*$" },
+    "journey_stage": {
+      "enum": ["discover", "understand", "decide", "act", "pay", "recover", "remember", "unspecified"]
+    },
+    "captured_at": { "type": "string", "format": "date-time", "description": "When the material was captured/uploaded (UTC, RFC 3339)." },
+    "processing_status": {
+      "enum": ["PENDING_UPLOAD", "VALIDATING", "READY", "QUARANTINED", "DELETED"],
+      "description": "Only READY evidence may be sent to the AI service. QUARANTINED marks failed validation (bad magic bytes, oversize, scan failure) and is returned as an error, never silently skipped."
+    },
+    "extracted_text": {
+      "type": "string",
+      "description": "OCR/document-extracted text when available. Optional; its presence must not be assumed by rules."
+    },
+    "pii_redaction_status": {
+      "enum": ["not_required", "pending", "done"],
+      "description": "Face/PII redaction bookkeeping (TECH_SPEC §15.1). MVP default: not_required only when the evidence demonstrably contains no personal data paths."
+    },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "UUIDv7 (TECH_SPEC §4.1 / docs/03 §4.2): all primary keys are UUIDv7."
+    }
+  }
+}

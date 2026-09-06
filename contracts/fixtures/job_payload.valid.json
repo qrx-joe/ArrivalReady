@@ -1,0 +1,49 @@
+{
+  "job_id": "01912345-6789-7abc-9def-0123456789ad",
+  "run_id": "01912345-6789-7abc-9def-0123456789ae",
+  "attempt_token": "01912345-6789-7abc-9def-0123456789af",
+  "idempotency_key": "org-0199/run-01912345ae/assessment/attempt-1",
+  "project": {
+    "project_id": "01912345-6789-7abc-9def-0123456789ac",
+    "entity_type": "restaurant",
+    "target_locale": "en-US"
+  },
+  "standard": {
+    "code": "IRRS",
+    "version": "0.1.0",
+    "rules_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "evidence": [
+    {
+      "evidence_id": "01912345-6789-7abc-9def-0123456789ab",
+      "project_id": "01912345-6789-7abc-9def-0123456789ac",
+      "type": "image",
+      "source_uri": "menu-front-20260907.jpg",
+      "object_key": "org/proj/evidence/01912345-6789-7abc-9def-0123456789ab.jpg",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mime_type": "image/jpeg",
+      "journey_stage": "act",
+      "captured_at": "2026-09-07T10:00:00Z",
+      "processing_status": "READY",
+      "pii_redaction_status": "not_required"
+    }
+  ],
+  "applicable_rules": [
+    {
+      "code": "IRRS-D4-001",
+      "dimension": "D4",
+      "description": "扫码点单落地页支持目标访客语言下独立完成点单",
+      "severity_default": "S1",
+      "review_required": false
+    },
+    {
+      "code": "IRRS-D5-002",
+      "dimension": "D5",
+      "description": "支付路径实际可用需人工确认",
+      "severity_default": "S1",
+      "review_required": true
+    }
+  ],
+  "budget": { "max_provider_requests": 6, "timeout_ms": 120000, "max_output_tokens": 4096 },
+  "run_context": { "is_retest": false, "parent_run_id": null }
+}

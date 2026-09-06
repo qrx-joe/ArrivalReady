@@ -1,0 +1,14 @@
+{
+  "evidence_id": "01912345-6789-7abc-9def-0123456789ab",
+  "project_id": "01912345-6789-7abc-9def-0123456789ac",
+  "type": "image",
+  "source_uri": "menu-front-20260907.jpg",
+  "object_key": "org/proj/evidence/01912345-6789-7abc-9def-0123456789ab.jpg",
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "mime_type": "image/jpeg",
+  "journey_stage": "act",
+  "captured_at": "2026-09-07T10:00:00Z",
+  "processing_status": "READY",
+  "pii_redaction_status": "not_required",
+  "metadata": { "original_filename": "菜单正面.jpg" }
+}

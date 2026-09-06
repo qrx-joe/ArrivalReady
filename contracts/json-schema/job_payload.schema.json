@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arrivalready.dev/schemas/job-payload-1.0.json",
+  "title": "AuditJobPayload",
+  "description": "What the Go worker posts to the Python AI service for one assessment job (TECH_SPEC §10, refined by R-03/R-07/R-11). Everything the AI service is allowed to know is in this envelope: it receives a FROZEN rule set and an evidence manifest, and returns a ProviderResponse. It cannot query the database, mutate reviews/scores/permissions, or fetch evidence by itself — that is the R-11/§5.2 boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "job_id", "run_id", "attempt_token", "idempotency_key",
+    "project", "standard", "evidence", "applicable_rules", "budget"
+  ],
+  "properties": {
+    "job_id": { "type": "string", "format": "uuid" },
+    "run_id": { "type": "string", "format": "uuid" },
+    "attempt_token": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Per-lease token. Echoed in the ProviderResponse; a response with a stale token is discarded by Go (worker-crash recovery, cancel safety)."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 32,
+      "description": "Organization-scoped key binding the operation to this exact payload fingerprint. The same key with a different payload is a 409 conflict, never a silent re-run."
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_id", "entity_type", "target_locale"],
+      "properties": {
+        "project_id": { "type": "string", "format": "uuid" },
+        "entity_type": { "enum": ["restaurant", "retail", "museum", "venue", "other"] },
+        "target_locale": { "type": "string", "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$", "description": "BCP-47. Decides the perspective of rule checks, not the report language (D-012 draft)." }
+      }
+    },
+    "standard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "version", "rules_sha256"],
+      "properties": {
+        "code": { "const": "IRRS" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "rules_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Hash of the exact rule-set file bound to this run (R-03): scoring and comparisons use this snapshot, never the currently active standard."
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "https://arrivalready.dev/schemas/normalized-evidence-1.0.json" },
+      "description": "Only READY evidence appears here. This manifest is the complete input universe: assessments citing ids outside it are grounding failures."
+    },
+    "applicable_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "dimension", "description", "severity_default", "review_required"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^IRRS-D[1-7]-[0-9]{3}$" },
+          "dimension": { "enum": ["D1", "D2", "D3", "D4", "D5", "D6", "D7"] },
+          "description": { "type": "string" },
+          "severity_default": { "enum": ["S0", "S1", "S2", "S3", "Info"] },
+          "review_required": { "type": "boolean" }
+        },
+        "description": "The frozen applicable-check set (the scoring denominator source, ADR-0002 §2.1): deterministic filtering happened in Go BEFORE this job was created; Python must not re-filter or extend it."
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_provider_requests", "timeout_ms"],
+      "properties": {
+        "max_provider_requests": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Hard cap including retries, repairs and fallback (execution plan §6). Exhausting it returns budget_exhausted, not a partial answer."
+        },
+        "timeout_ms": { "type": "integer", "minimum": 1000 },
+        "max_output_tokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "run_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "is_retest": { "type": "boolean" },
+        "parent_run_id": { "type": ["string", "null"], "format": "uuid" },
+        "note": { "type": "string" }
+      },
+      "description": "Informational only. Comparison/retest semantics live in Go and the DB; the AI service must not behave differently based on retest status."
+    }
+  }
+}

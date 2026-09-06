@@ -1,0 +1,10 @@
+{
+  "rule_id": "IRRS-D5-002",
+  "status": "UNKNOWN",
+  "severity": "S1",
+  "evidence_refs": [],
+  "observation": "材料中只有支付标识照片，无实际支付记录",
+  "reason": "标识存在不能证明支付成功；缺人工确认记录",
+  "confidence": 0.3,
+  "needs_human_review": true
+}
