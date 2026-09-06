@@ -1,0 +1,28 @@
+# 非法 fixture：weight 为负数（评分分母语义要求权重非负，ADR-0002）。
+standard:
+  code: IRRS
+  version: 9.9.9
+  status: draft
+  created_at: "2026-09-07"
+
+rules:
+  - code: IRRS-D3-001
+    title: 负权重规则
+    dimension: D3
+    journey_stages: [decide]
+    description: weight 为负的规则必须被拒绝。
+    severity_default: S2
+    weight: -1
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+    applicability:
+      entity_types: [restaurant]
+      target_locales: ["*"]
+    rationale: 测试用途。
+    examples:
+      - outcome: fail
+        detail: 示例。
+    status: draft

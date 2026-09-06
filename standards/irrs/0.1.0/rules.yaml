@@ -1,0 +1,316 @@
+# IRRS 0.1.0 首批规则（B02 草稿）
+#
+# 状态：整个规则包 status=draft——未经 Product Owner 审定前不得用于生产评分（ADR-0002）。
+# 审定要点：逐条复核 severity_default 与 weight（rationale 是审定依据）、examples 是否符合实际场景。
+# 约束：
+#   - 规则文件按 ADR-0001 唯一存放于 standards/irrs/<semver>/；发布后不可原地修改，只能出新版本目录。
+#   - 所有评估必须严格基于 evidence_requirements 声明的证据；证据不足时结论是 UNKNOWN，不是推断。
+#   - 支付标识照片只能证明「标识存在」，永远不能证明「支付成功」——见 IRRS-D5-002。
+#   - 「不适用」（applicability 之外）与「缺证据」（UNKNOWN）是不同决策，评分语义见 ADR-0002。
+standard:
+  code: IRRS
+  version: 0.1.0
+  status: draft
+  created_at: "2026-09-07"
+  notes: >
+    B02 首批 10 条，覆盖 D1–D7，优先餐饮业态。
+    目标集为 30–50 条经 PO 审定的规则（TODO T-004）；扩充与发布以独立小提交推进。
+
+rules:
+  - code: IRRS-D1-001
+    title: 门头可发现与名称可识别
+    dimension: D1
+    journey_stages: [discover]
+    description: >
+      从街面视角能识别出这是一家营业中的店铺：店名招牌清晰、营业状态可辨识；
+      若店名不含业态信息，招牌或入口处有业态提示（菜品图片/品类词）。
+      仅评估门头照片可见内容；地图/平台线上可发现性不在本条范围。
+    severity_default: S2
+    weight: 1
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+      must_show: [storefront]
+    applicability:
+      entity_types: [restaurant, retail, venue, other]
+      target_locales: ["*"]
+    rationale: >
+      发现是旅程第一步，但国际访客与本地用户在门头识别上的差异相对有限
+      （招牌字体/图片通常可比对），故 S2 而非 S1；名称可识别性对后续
+      导航、打车、找店有实际影响，值得单列。
+    examples:
+      - outcome: pass
+        detail: 门头挂中文招牌+菜品实拍图，无文字也可识别为餐饮店。
+      - outcome: fail
+        detail: 招牌仅在建筑侧面且夜间无照明，正门视角无法识别店名。
+    status: draft
+
+  - code: IRRS-D2-001
+    title: 菜单目标访客语言可达
+    dimension: D2
+    journey_stages: [understand]
+    description: >
+      门店存在目标访客语言可理解的菜单形态：目标语言菜单、双语菜单，
+      或扫码后可切换/翻译到目标语言的电子菜单。仅凭「有外文单词点缀」
+      不算可达；判断对象是目标访客能否独立看懂品类与菜品。
+    severity_default: S1
+    weight: 3
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+      must_show: [menu]
+    applicability:
+      entity_types: [restaurant, retail]
+      target_locales: ["*"]
+    rationale: >
+      菜单语言可达性是餐饮业态理解阶段的核心摩擦点；不可达时访客只能
+      放弃或逐桌求助，代价直接。S1：存在店员协助降级路径，未直接阻断
+      全部消费（阻断性场景由 D4 规则承接）。
+    examples:
+      - outcome: pass
+        detail: 提供中英双语菜单，品类与价格完整对应。
+      - outcome: fail
+        detail: 菜单仅中文且无翻译入口，仅一道菜印有英文单词。
+    status: draft
+
+  - code: IRRS-D2-002
+    title: 特色菜品文化概念可理解
+    dimension: D2
+    journey_stages: [understand]
+    description: >
+      对依赖文化语境的菜品/商品（如招牌菜、烹饪方式、地方吃法），
+      菜单或桌面材料在字面翻译之外提供简短解释（原料、口感、吃法），
+      使目标访客不需要额外提问即可理解要点。
+    severity_default: S3
+    weight: 1
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+      must_show: [menu]
+    applicability:
+      entity_types: [restaurant, retail]
+      target_locales: ["*"]
+    rationale: >
+      属体验增强项：缺失通常造成误点或询问成本，不阻断消费，S3。
+      单列是因为这是通用 AI 能给出但线下材料最常缺失的内容，改造成本低。
+    examples:
+      - outcome: pass
+        detail: 招牌菜附英文一句话说明原料与辣度。
+      - outcome: fail
+        detail: 菜品仅有音译名（如 Mapo Tofu），无任何口感/原料说明。
+    status: draft
+
+  - code: IRRS-D3-001
+    title: 价格与关键成分信息透明
+    dimension: D3
+    journey_stages: [decide]
+    description: >
+      价格以数字明示且与品类对应；份量（人数/克重/份）可推断；
+      关键成分信息（过敏原、辣度、生食提示）以目标访客可理解的方式标注。
+      过敏原与食品安全相关判断必须人工复核（review_required），
+      AI 只标注材料中「是否有标注」，不判断标注内容是否医学正确。
+    severity_default: S1
+    weight: 2
+    evaluation_type: hybrid
+    review_required: true
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+      must_show: [menu]
+    applicability:
+      entity_types: [restaurant, retail]
+      target_locales: ["*"]
+    rationale: >
+      价格透明影响决策但不常阻断（可询问）；过敏原缺失可能造成安全
+      事件，因此本条 hybrid + 必审：模型只做「有无标注」的结构化观察，
+      严重性判断留给人。
+    examples:
+      - outcome: pass
+        detail: 菜单标注价格、例/份说明，过敏原以图标列出并有英文图例。
+      - outcome: fail
+        detail: 价格齐全但辣度/过敏原完全无标注，且目标语言版本缺失。
+    status: draft
+
+  - code: IRRS-D4-001
+    title: 扫码点单流程语言可达
+    dimension: D4
+    journey_stages: [act]
+    description: >
+      桌贴/入口二维码点单落地页支持目标访客语言下独立完成：
+      选品、数量、备注、下单确认。存在语言切换入口且切换后核心流程
+      不回退为仅中文；支付步骤的语言与可用性由 D5 规则承接，不在本条判断。
+    severity_default: S1
+    weight: 3
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+      must_show: [qr_landing_page]
+    applicability:
+      entity_types: [restaurant]
+      target_locales: ["*"]
+    rationale: >
+      点单是餐饮核心转化动作；落地页语言不可达约等于订单损失。
+      S1 而非 S0：通常存在柜台点单降级路径（该路径本身由 D4-002 评估）。
+    examples:
+      - outcome: pass
+        detail: 扫码进入支持 en/ja 切换的点单页，选品到下单全程可完成。
+      - outcome: fail
+        detail: 落地页仅中文且无语言切换，需手机号注册才能浏览。
+    status: draft
+
+  - code: IRRS-D4-002
+    title: 自助流程不可用时的协助降级路径
+    dimension: D4
+    journey_stages: [act]
+    description: >
+      当扫码/自助设备流程对目标访客不可用时，存在可替代的完成路径：
+      柜台人工点单、图片菜单指认、双语服务卡等。本条为人工评估：
+      AI 仅能从材料提出候选观察（如「未见替代路径提示」），替代路径
+      是否真实可用必须由人确认。
+    severity_default: S2
+    weight: 1
+    evaluation_type: human
+    review_required: true
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image, text]
+      must_show: [counter, service_card]
+    applicability:
+      entity_types: [restaurant, retail]
+      target_locales: ["*"]
+    rationale: >
+      降级路径决定语言不可达是「摩擦」还是「阻断」，但它依赖现场
+      交互事实，照片无法证明可用性——因此 evaluation_type=human，
+      防止模型把「没有反面证据」当成「存在降级路径」。
+    examples:
+      - outcome: pass
+        detail: 柜台提供图片菜单与双语点单卡，访谈确认店员可协助。
+      - outcome: fail
+        detail: 仅扫码点单且柜台不接受口头点单，无可替代路径。
+    status: draft
+
+  - code: IRRS-D5-001
+    title: 支付方式明示
+    dimension: D5
+    journey_stages: [pay]
+    description: >
+      入口/柜台/菜单以标识明示支持的支付方式（国际卡、现金、
+      本地移动支付、外币兑换提示），标识在正常点单动线上可见。
+      本条只判断「标识存在且可读」；实际能否支付成功由 D5-002 人工确认。
+    severity_default: S1
+    weight: 2
+    evaluation_type: hybrid
+    review_required: true
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+      must_show: [payment_signage]
+    applicability:
+      entity_types: [restaurant, retail, venue, other]
+      target_locales: ["*"]
+    rationale: >
+      支付是国际访客放弃率最高的环节之一；标识缺失直接导致现金不足
+      的访客离店。标识与真实可用性必须分开评估：照片可证标识、
+      不可证交易，故本条 hybrid 必审，交易可用性单列 D5-002。
+    examples:
+      - outcome: pass
+        detail: 收银台张贴银联/Visa/支付宝/微信标识，含英文 ACCEPTED HERE。
+      - outcome: fail
+        detail: 全店无任何支付方式标识，支付方式仅能口头询问。
+    status: draft
+
+  - code: IRRS-D5-002
+    title: 支付路径实际可用（人工确认）
+    dimension: D5
+    journey_stages: [pay]
+    description: >
+      标注支持的支付方式经人工实际支付或现场确认可以完成交易。
+      支付标识照片只能证明标识存在，永远不构成「支付成功」的证据；
+      无人工确认记录时本条结论只能是 UNKNOWN，不得自动 PASS。
+    severity_default: S1
+    weight: 2
+    evaluation_type: human
+    review_required: true
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [text, image]
+      must_show: [payment_confirmation]
+    applicability:
+      entity_types: [restaurant, retail, venue, other]
+      target_locales: ["*"]
+    rationale: >
+      「标识存在」与「交易可用」的混淆会产出虚假的支付准备度结论，
+      是本项目 No Fake Certainty 原则（PRD §9）的关键落点。
+      仅人工可判： evaluation_type=human，且缺人工证据时必须 UNKNOWN。
+    examples:
+      - outcome: pass
+        detail: 实测Visa刷卡成功并留存小票，与标识一致。
+      - outcome: fail
+        detail: 标识Visa可用，实测POS拒绝外卡且无其他国际支付路径。
+    status: draft
+
+  - code: IRRS-D6-001
+    title: 求助与投诉渠道可见
+    dimension: D6
+    journey_stages: [recover]
+    description: >
+      在店内或点单材料中可见出错后的求助路径：双语求助提示牌、
+      柜台求助指引、客服/店长联系方式或投诉二维码。仅评估「可见性」，
+      不评估响应质量。
+    severity_default: S2
+    weight: 1
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image, text]
+      must_show: [help_sign, contact]
+    applicability:
+      entity_types: [restaurant, retail, venue, other]
+      target_locales: ["*"]
+    rationale: >
+      出错后的可求助性影响访客安全感与问题升级成本，但多数门店
+      依赖店员在场兜底，材料缺失不等于完全无救助，S2。
+    examples:
+      - outcome: pass
+        detail: 桌贴含双语「如需帮助请联系店员」及店长微信二维码。
+      - outcome: fail
+        detail: 店内无任何求助/投诉指引，仅中文小票含客服电话。
+    status: draft
+
+  - code: IRRS-D7-001
+    title: 就餐习俗与文化语境提示
+    dimension: D7
+    journey_stages: [decide, remember]
+    description: >
+      对可能造成文化误解的就餐习俗，材料提供简短提示：是否收服务费/
+      小费政策、共餐与分餐方式、等位叫号规则、自带酒水政策等。
+      提示语言以目标访客可理解为准（与 D2-001 的语言可达性衔接）。
+    severity_default: Info
+    weight: 1
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image, text]
+      must_show: [menu, table_notice]
+    applicability:
+      entity_types: [restaurant]
+      target_locales: ["*"]
+    rationale: >
+      文化误解通常不阻断消费但影响复购与口碑，定位为 Info 建议项：
+      不扣分、不计入分母（ADR-0002），为后续升级为正式 severity 留观察位。
+    examples:
+      - outcome: pass
+        detail: 菜单尾页英文说明收取10%服务费、免费茶水与等位规则。
+      - outcome: fail
+        detail: 外卡访客结账时才被告知现金-only 且无小费/服务费说明。
+    status: draft

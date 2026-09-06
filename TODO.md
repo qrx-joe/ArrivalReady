@@ -43,7 +43,7 @@
 ## B. 产品与标准（关键路径，最容易被低估）
 
 - [ ] **T-004 IRRS v0.1 规则集编写**
-  - 说明：规则集是本项目**最核心资产**（PRD §17.1 / TECH_SPEC §38），目前只有维度框架（D1–D7）和权重假设，**没有任何一条具体规则**。没有它，Slice 1 的 AI 评估无标可依；
+  - 当前进展（B02）：首批 10 条草稿已入库（[standards/irrs/0.1.0/rules.yaml](standards/irrs/0.1.0/rules.yaml)，覆盖 D1–D7，餐饮优先，全部 `draft`）；规则 Schema、评分语义草案（[ADR-0002](docs/adr/0002-scoring-and-review.md)）与正反例 fixture 已建立；schema 校验脚本可离线运行。**未完成**：PO 逐条审定 severity/weight、扩充到 30–50 条、真实材料人工走查——完成前规则包保持 draft，不得用于生产评分。
   - 产出：`standards/irrs/0.1.0/rules.yaml`，首批 **30–50 条规则**，覆盖 D1–D7，重点先覆盖餐饮业态；每条含 code / title / dimension / description / severity_default / weight / evaluation_type / evidence_requirements / rationale / examples（格式见 docs/03 §6.6）；
   - DoD：拿一套真实门店材料（菜单 + 门头 + 扫码页）人工走查一遍，能用这批规则完整跑出一次 Audit 结论；severity 与 weight 由人审定；
   - Owner：Product Owner（AI 起草，人工审定）。
