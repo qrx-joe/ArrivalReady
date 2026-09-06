@@ -15,12 +15,16 @@
 | 01 | [docs/01_ArrivalReady_PRD_v0.1.md](docs/01_ArrivalReady_PRD_v0.1.md) | 产品需求：机会、用户、MVP 范围、IRRS 标准、验证计划、Kill Criteria |
 | 02 | [docs/02_ArrivalReady_TECH_SPEC_v0.1.md](docs/02_ArrivalReady_TECH_SPEC_v0.1.md) | 技术规范：架构原则、技术栈、领域模型、AI Pipeline、API、安全基线 |
 | 03 | [docs/03_ArrivalReady_ENGINEERING_STANDARDS_v0.1.md](docs/03_ArrivalReady_ENGINEERING_STANDARDS_v0.1.md) | 工程规范：技术选型依据、同类产品制作规范、行业规范清单、注释与文档规范 |
+| 04 | [docs/04_DOCUMENT_REVIEW_2026-09-07.md](docs/04_DOCUMENT_REVIEW_2026-09-07.md) | 文档审查：16 项实施缺口、原文依据与关闭标准 |
+| 05 | [docs/05_EXECUTION_PLAN_v0.1.md](docs/05_EXECUTION_PLAN_v0.1.md) | 详细执行方案：16 个批次、依赖、验证门禁、提交与数据回滚策略 |
 | — | [TODO.md](TODO.md) | 当前周期任务清单（滚动更新） |
 | — | [TODO_NEXT.md](TODO_NEXT.md) | 下一阶段任务队列（按依赖排序，带拉入条件） |
 | — | [COMMUNICATING.md](COMMUNICATING.md) | 人机协作记录 + 决策日志 |
 | — | [ADVICE.md](ADVICE.md) | AI 建议 / 不确定点 / 遗漏点清单 |
 
 ## 快速开始
+
+当前仓库仅有文档，尚无可运行应用。实施从 [执行方案 B01](docs/05_EXECUTION_PLAN_v0.1.md) 开始；原文范围与状态冲突见审查记录，方案中的建议不代表暂定决策已获确认。
 
 工程基线建立后（见 [TODO.md](TODO.md) T-003），目标形态：
 
