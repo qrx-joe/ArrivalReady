@@ -94,6 +94,8 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /projects/{projectId}/evidence/upload-url:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
     post:
       tags: [evidence]
       summary: 申请私有上传签名 URL（服务端生成随机 object key）
@@ -114,6 +116,8 @@ paths:
         "422": { $ref: "#/components/responses/Unprocessable" }
 
   /projects/{projectId}/evidence:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
     post:
       tags: [evidence]
       summary: upload complete（幂等；校验对象实际大小/Content-Type/magic bytes/hash 后才 READY）
@@ -176,6 +180,8 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
 
   /projects/{projectId}/audits:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
     post:
       tags: [audits]
       summary: 创建 AuditRun（幂等；冻结标准版本与证据输入清单）
@@ -225,6 +231,8 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /audits/{auditId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/AuditId"
     post:
       tags: [audits]
       summary: 取消运行中的 Audit（幂等；晚到的 job 响应将被丢弃）
@@ -243,6 +251,8 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /audits/{auditId}/retest:
+    parameters:
+      - $ref: "#/components/parameters/AuditId"
     post:
       tags: [audits]
       summary: 创建复测：指向 parent 的新 AuditRun（绝不修改旧 run；幂等）
@@ -265,6 +275,8 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /audits/{auditId}/findings:
+    parameters:
+      - $ref: "#/components/parameters/AuditId"
     get:
       tags: [findings]
       summary: Finding 列表（含 assessment/review 两轴状态）
@@ -296,6 +308,8 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /findings/{findingId}/reviews:
+    parameters:
+      - $ref: "#/components/parameters/FindingId"
     post:
       tags: [findings]
       summary: 提交人审决定（confirm/reject/edit/na；edit 保留原始候选；乐观并发）
@@ -320,6 +334,8 @@ paths:
         "422": { $ref: "#/components/responses/Unprocessable" }
 
   /findings/{findingId}/task:
+    parameters:
+      - $ref: "#/components/parameters/FindingId"
     patch:
       tags: [findings]
       summary: 更新整改任务状态（显式状态机，非法迁移 422；每次迁移记录 actor/原因/版本）
