@@ -52,9 +52,8 @@ jobs:
           MINIO_ROOT_PASSWORD: arrival_dev_password
         ports:
           - 9000:9000
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 5s --health-timeout 3s --health-retries 12
+        # 近版 MinIO 镜像已不带 curl/shell，容器内健康检查不可用；
+        # 就绪等待由测试内的连接重试承担（evidence waitForMinIO）。
     env:
       TEST_DATABASE_URL: postgres://arrival:arrival_dev@localhost:5432/arrival_test?sslmode=disable
       MINIO_TEST_ENDPOINT: localhost:9000
