@@ -12,6 +12,15 @@
 
 ## 1. 协作会话记录
 
+### S-7 ｜ 2026-09-07 ｜ 执行 B05/B06：认证租户与证据闭环
+- **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
+- **结果**：
+  - B05（PR #7）：OIDC RS256 认证（JWKS 缓存/刷新）、租户从库加载、测试身份三重门控、projects/audit_log 组织隔离、ADR-0003 锁定 golang-migrate（D-015）、cmd/migrate（down-all 守卫）、CI postgres service；
+  - B06（PR #8–#10）：evidence 校验闸门（大小/magic bytes/服务端 sha256，失败 QUARANTINED）、幂等 complete（fingerprint 重放/冲突）、项目 CRUD、私有下载签名、软删除占位；CI 的 MinIO 改为宿主进程（容器镜像无 shell 不可诊断，两次实测失败后修正）。
+- **验证**：真实 PG17（initdb 临时集群）+ 真实 MinIO Windows 二进制上集成测试全绿（迁移 up→down→up、两组织隔离、上传正常/四种隔离态/跨组织 fail closed）；GitHub Actions 四作业绿，集成测试在 runner 上实跑。
+- **产物**：migrations 0001–0004、internal/auth、internal/storage、internal/evidence、internal/api、internal/store、internal/testutil、evals/datasets 登记模板、services/api/README。
+- **遗留问题**：B07（可恢复 job）未开始——草稿因质量不达标被主动撤销，留待专注会话；B08 起阻塞于 D-007 凭据、ADR-0002 审定、真实素材；D-006～D-009、D-011/D-012 仍待 PO；本机 Docker Desktop 引擎故障未修复（T-003 compose 探活受阻）。
+
 ### S-6 ｜ 2026-09-07 ｜ 执行 B02/B03/B04：规则、契约与工程基线
 - **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
 - **请求**：继续执行方案，直至外部输入阻塞；保持「一步一审一提交」并推送 GitHub。
