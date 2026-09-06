@@ -16,7 +16,7 @@
 
 可以在本机端到端运行。这是 TECH_SPEC §35 Slice 1 的原样落地，Slice 2/3 不碰。
 
-周期时长：建议 5–7 个工作日，**待决策 D-006（比赛时间线）确认后校准**。
+周期时长：按暂定时间线 D-006（2 周）校准为 5–7 个工作日；赛事时间确认后立即复校（若 < 1 周，砍 Slice 3，保 Slice 1–2）。
 
 ---
 
@@ -67,7 +67,7 @@
 - [ ] **T-008 模型 Provider Adapter + Prompt v1**
   - 产出：`StructuredModel` Protocol + 首个供应商 adapter（含 retry / fallback）+ `ai/prompts/extraction/v1.md`、`ai/prompts/assessment/v1.md`（版本化文件，不写死在代码里）；
   - DoD：业务层无供应商 SDK import；「一张菜单图 → 合法 assessment JSON」跑通；schema 校验失败走安全失败路径（TECH_SPEC §28）；请求元数据（prompt_version / token / cost）有记录；
-  - Owner：AI Tech Lead。**依赖：T-001 的供应商决策（D-007）。**
+  - Owner：AI Tech Lead。**依赖：D-007 供应商已暂定（豆包主 + Qwen-VL 备，待 PO 复核）；若改选其他家，只影响 adapter，不影响本任务结构。**
 
 - [ ] **T-009 Slice 1 打通（本机）**
   - 流程：Create Project → Upload Image（Signed URL → MinIO）→ AI Structured Assessment → Finding（含 evidence_refs）→ 前端 Evidence 展示；
