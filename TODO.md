@@ -30,14 +30,14 @@
   - DoD：四项决策的确认记录以 supersedes 行写入 [COMMUNICATING.md](COMMUNICATING.md) 决策日志；D-011/D-012 状态更新；[需求矩阵](docs/requirements-matrix.md)同步；
   - Owner：Product Owner × AI（进行中，见决策日志）。
 
-- [ ] **T-002 仓库工程基线**
-  - 产出：目录骨架（按 TECH_SPEC §22：apps / services / contracts / database / standards / evals / infra / docs）、分支策略（main + 短生命周期分支）、PR 检查单（docs/03 §7）；
-  - DoD：新成员 clone 后 5 分钟内知道「代码往哪儿放、提交怎么写」；Conventional Commits 生效（本仓库前几次提交即为示范）；
-  - Owner：Application Lead。
+- [x] **T-002 仓库工程基线**
+  - 产出：目录骨架（TECH_SPEC §22：apps / services / contracts / database 待 B05 / standards / evals / infra 待部署期 / docs + scripts）、分支策略（main + `codex/<topic>` 短分支，一批一 PR）、PR 模板（.github/pull_request_template.md = docs/03 §7.2 检查单）、根 [AGENTS.md](AGENTS.md)；
+  - DoD：新成员读 AGENTS.md + README 即知「代码往哪儿放、提交怎么写」；Conventional Commits 全部历史提交即为示范；
+  - Owner：Application Lead。（2026-09-07 B04 完成）
 
-- [ ] **T-003 本地开发环境**
-  - 产出：`docker-compose.yml`（PostgreSQL 18 + MinIO）、`services/api`（Go 空壳）、`services/ai`（FastAPI 空壳）、`apps/web`（Next.js 空壳）、`Makefile`（dev / lint / test / migrate）；
-  - DoD：`make dev` 一条命令起全栈空壳并互相探活；README 更新到「新成员 20 分钟可跑通」（TECH_SPEC §23）；
+- [~] **T-003 本地开发环境**
+  - 当前进展（B04）：compose（postgres:18 + MinIO）、三端空壳（Go chi :8080 / FastAPI :8100 / Next.js 16.3.3 :3000）、liveness/readiness（缺配置返回可诊断 503）、Makefile + `scripts/dev.ps1` 等价入口、`.env.example`（无密钥）、离线 CI（.github/workflows/ci.yml）。三端 lint/type/test/build 与契约校验已在本机实际跑通。
+  - **受阻**：本机 Docker Desktop 引擎未能就绪（`docker info` 持续 500，进程在但引擎管道无响应）——`compose up` 全栈探活验证待引擎恢复后补做；解除人：Product Owner（重启 Docker Desktop / 检查 WSL）。完成后 `make dev` 语义（infra+三端探活）达成并补记。
   - Owner：Application Lead + DevOps。
 
 ## B. 产品与标准（关键路径，最容易被低估）

@@ -45,11 +45,13 @@
 - 素材、密钥、缓存、私人访谈原文一律不入库；
 - 有依赖的批次在 PR 描述中写明依赖关系，不悄悄堆叠。
 
-## 6. 本地环境前提（Windows）
+## 6. 本地环境前提（Windows，B04 实测）
 
-- Windows 10/11 + Git Bash（本仓库当前协作环境）；PowerShell 可用；
-- B04 将提供 `Makefile` 与 `scripts/dev.ps1` 等价入口，并核对官方 release 页锁定 Docker/Node/pnpm/Go/uv 版本；在那之前仓库只有文档，无构建步骤；
-- B04 起数据库 volume 受保护：不得执行 `docker compose down -v` 模拟回滚。
+- Windows 10/11 + Git Bash 或 PowerShell；**系统默认无 `make`**——优先用 `scripts\dev.ps1`，Git Bash/WSL 下的 Makefile 为等价入口；
+- 大陆网络：`proxy.golang.org` 与部分官方站点不可达。Makefile 已内置 `GOPROXY=https://goproxy.cn,direct`；go.mod 的 `toolchain go1.27.1` 会让 1.26.x 本机自动下载新工具链（走同一代理）；
+- 已锁定工具链（2026-09-07 官方渠道核对）：Go 1.27.1 / Node 24 + pnpm 10 / Python 3.13（uv 管理，`uv sync --locked`）/ Next.js 16.3.3 + React 19.2.8（pnpm-lock.yaml）；
+- Docker Desktop 引擎当日未能就绪（`docker info` 500）：`compose up` 全栈验证在引擎恢复后补做（`.\scripts\dev.ps1 infra`）；compose 语法已校验；
+- 数据库 volume 受保护：不得执行 `docker compose down -v` 模拟回滚。
 
 ## 7. 硬约束（违反 = 打回）
 

@@ -1,0 +1,46 @@
+[project]
+name = "arrivalready-ai"
+version = "0.1.0"
+description = "Arrival Ready AI service: probabilistic edge of the system (extraction, assessment, grounding support). Receives frozen rule sets + evidence manifests from the Go API and returns ProviderResponse envelopes; never writes business tables."
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "httpx>=0.27",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+
+# Install the project into the venv so `import app` works under pytest/mypy
+# regardless of the invocation directory (uv sync handles it).
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
