@@ -1,0 +1,50 @@
+# ===== 环境与密钥（绝不入库）=====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ===== Node / Next.js（apps/web）=====
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+.eslintcache
+.pnpm-store/
+next-env.d.ts
+
+# ===== Go（services/api）=====
+services/api/bin/
+*.test
+*.out
+coverage.txt
+
+# ===== Python（services/ai）=====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ===== 本地基础设施（docker 卷数据）=====
+infra/docker/data/
+*.dump
+*.sql.gz
+
+# ===== 构建产物 =====
+dist/
+build/
+
+# ===== IDE / 操作系统 =====
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
