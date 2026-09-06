@@ -34,10 +34,25 @@ type Config struct {
 	OIDCAudience string
 	OIDCJWKSURL  string
 
+	// S3-compatible object storage (B06). Local dev: MinIO from compose.
+	S3Endpoint  string // e.g. localhost:9000
+	S3Bucket    string
+	S3AccessKey string
+	S3SecretKey string
+	S3UseSSL    bool
+
 	// TestIdentity gates (auth.TestIdentityConfig). Secret is sensitive:
 	// consume it only through code, never log it.
 	TestIdentityEnabled string
 	TestIdentitySecret  string
+}
+
+// StorageMode reports whether object storage is configured.
+func (c Config) StorageMode() string {
+	if c.S3Endpoint != "" && c.S3Bucket != "" {
+		return "s3"
+	}
+	return "unconfigured"
 }
 
 // AuthMode reports which authenticator the process will install, so main can
@@ -66,6 +81,11 @@ func Load() (Config, error) {
 		OIDCIssuer:          os.Getenv("OIDC_ISSUER"),
 		OIDCAudience:        os.Getenv("OIDC_AUDIENCE"),
 		OIDCJWKSURL:         os.Getenv("OIDC_JWKS_URL"),
+		S3Endpoint:          os.Getenv("S3_ENDPOINT"),
+		S3Bucket:            envOr("S3_BUCKET", "arrivalready-evidence"),
+		S3AccessKey:         os.Getenv("S3_ACCESS_KEY"),
+		S3SecretKey:         os.Getenv("S3_SECRET_KEY"),
+		S3UseSSL:            os.Getenv("S3_USE_SSL") == "1",
 		TestIdentityEnabled: os.Getenv("ARRIVAL_ENABLE_TEST_IDENTITY"),
 		TestIdentitySecret:  os.Getenv("ARRIVAL_TEST_IDENTITY_SECRET"),
 	}

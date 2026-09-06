@@ -25,9 +25,12 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/api"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/auth"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/config"
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/evidence"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/health"
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/storage"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/store"
 )
 
@@ -58,6 +61,14 @@ func main() {
 	}
 
 	authn := buildAuthenticator(cfg, logger)
+	objectStore := buildObjectStore(cfg, logger)
+
+	var db *store.DB
+	var evidenceSvc *evidence.Service
+	if pool != nil && objectStore != nil {
+		db = &store.DB{Pool: pool}
+		evidenceSvc = evidence.NewService(db, objectStore)
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -65,43 +76,21 @@ func main() {
 	r.Mount("/", health.NewHandler(pool).Routes())
 
 	// Protected routes fail closed: without a database there is no user
-	// lookup and without an authenticator there is no identity — both are 503
-	// with a reason, never an implicit bypass.
-	if authn != nil && pool != nil {
-		db := &store.DB{Pool: pool}
+	// lookup, without an authenticator there is no identity, and without
+	// object storage uploads cannot validate — 503 with a reason, never a
+	// silent bypass.
+	if authn != nil && db != nil && evidenceSvc != nil {
+		server := &api.Server{DB: db, Evidence: evidenceSvc}
 		r.Group(func(pr chi.Router) {
 			pr.Use(auth.Middleware(authn, db))
-			pr.Get("/projects", func(w http.ResponseWriter, r *http.Request) {
-				actor, ok := auth.ActorFrom(r.Context())
-				if !ok {
-					writeProblem(w, http.StatusInternalServerError, "actor missing from context")
-					return
-				}
-				projects, err := db.ListProjects(r.Context(), actor)
-				if err != nil {
-					logger.Error("list projects", "error", err)
-					writeProblem(w, http.StatusInternalServerError, "query failed")
-					return
-				}
-				writeJSON(w, http.StatusOK, map[string]any{
-					"data": projects,
-					"meta": map[string]any{"request_id": middleware.GetReqID(r.Context())},
-				})
-			})
+			pr.Mount("/", server.Routes())
 		})
 	} else {
-		reason := "service degraded: authenticator or database not configured"
-		r.Get("/projects", func(w http.ResponseWriter, _ *http.Request) {
-			writeProblem(w, http.StatusServiceUnavailable, reason)
+		r.HandleFunc("/*", func(w http.ResponseWriter, _ *http.Request) {
+			writeProblem(w, http.StatusServiceUnavailable,
+				"service degraded: authenticator, database or object storage not configured")
 		})
 	}
-
-	// Dependency-free 404 in the API error shape so clients always get JSON.
-	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"type":"about:blank","title":"Not Found","status":404}`))
-	})
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -113,7 +102,8 @@ func main() {
 	defer stop()
 
 	go func() {
-		logger.Info("api listening", "port", cfg.Port, "env", cfg.Env, "auth", cfg.AuthMode())
+		logger.Info("api listening", "port", cfg.Port, "env", cfg.Env,
+			"auth", cfg.AuthMode(), "storage", cfg.StorageMode())
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server exited", "error", err)
 			os.Exit(1)
@@ -152,10 +142,19 @@ func buildAuthenticator(cfg config.Config, logger *slog.Logger) auth.Authenticat
 	return nil
 }
 
-func writeJSON(w http.ResponseWriter, code int, body any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(body)
+// buildObjectStore wires S3-compatible storage. Missing config is a logged
+// warning + nil: uploads answer 503 instead of pretending to work.
+func buildObjectStore(cfg config.Config, logger *slog.Logger) storage.Store {
+	if cfg.S3Endpoint == "" || cfg.S3Bucket == "" {
+		logger.Warn("object storage not configured (S3_ENDPOINT / S3_BUCKET empty)")
+		return nil
+	}
+	st, err := storage.NewMinIOStore(cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3UseSSL)
+	if err != nil {
+		logger.Error("object storage client failed", "error", err)
+		os.Exit(1)
+	}
+	return st
 }
 
 func writeProblem(w http.ResponseWriter, code int, detail string) {
