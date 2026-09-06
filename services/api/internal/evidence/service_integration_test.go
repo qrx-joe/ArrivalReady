@@ -47,12 +47,15 @@ func intEnv(t *testing.T) (*Service, *store.DB, auth.Actor) {
 	// CI starts the MinIO container without a healthcheck (newer images have
 	// no curl/shell), so readiness is polled here: BucketExists up to 15s.
 	deadline := time.Now().Add(15 * time.Second)
+	var lastErr error
 	for {
 		if err := st.EnsureBucket(context.Background()); err == nil {
 			break
+		} else {
+			lastErr = err
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("minio not ready within 15s")
+			t.Fatalf("minio not ready within 15s: %v", lastErr)
 		}
 		time.Sleep(500 * time.Millisecond)
 	}

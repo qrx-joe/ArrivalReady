@@ -45,15 +45,6 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U arrival -d arrival_test"
           --health-interval 5s --health-timeout 3s --health-retries 12
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: arrival
-          MINIO_ROOT_PASSWORD: arrival_dev_password
-        ports:
-          - 9000:9000
-        # 近版 MinIO 镜像已不带 curl/shell，容器内健康检查不可用；
-        # 就绪等待由测试内的连接重试承担（evidence waitForMinIO）。
     env:
       TEST_DATABASE_URL: postgres://arrival:arrival_dev@localhost:5432/arrival_test?sslmode=disable
       MINIO_TEST_ENDPOINT: localhost:9000
@@ -66,7 +57,18 @@ jobs:
         run: test -z "$(gofmt -l .)"
       - name: vet
         run: go vet ./...
-      - name: test (unit + integration against service postgres)
+      - name: Start MinIO (host process; container image healthcheck quirks avoided)
+        run: |
+          curl -sSL -o /tmp/minio https://dl.min.io/server/minio/release/linux-amd64/minio
+          chmod +x /tmp/minio
+          mkdir -p /tmp/minio-data
+          MINIO_ROOT_USER=arrival MINIO_ROOT_PASSWORD=arrival_dev_password /tmp/minio server /tmp/minio-data --address :9000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:9000/minio/health/live && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:9000/minio/health/live
+      - name: test (unit + integration against service postgres + host minio)
         run: go test -p 1 ./...
       - name: build
         run: go build ./...
