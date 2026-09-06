@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arrivalready.dev/schemas/irrs/rule-set-0.1.0.json",
+  "title": "IRRS Rule Set",
+  "description": "Schema for one versioned IRRS rule-set file (standards/irrs/<semver>/rules.yaml, parsed as JSON before validation). The rule set is a product asset consumed by the Go scoring service and the Python assessment pipeline; it must never live inside a single service. Published (active) rule sets are immutable: fixes are made by creating a new version directory, never by editing files in place.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["standard", "rules"],
+  "properties": {
+    "standard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "version", "status", "created_at"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "IRRS",
+          "description": "Internal Readiness Standard identifier. Only IRRS exists in the MVP."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "SemVer 2.0.0 version of the rule set. Must match the directory name it is stored in."
+        },
+        "status": {
+          "enum": ["draft", "active", "retired"],
+          "description": "draft: pending PO review, must not score production runs. active: published and immutable. retired: no longer used for new runs; historical runs keep their bound version."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "dimension": {
+      "enum": ["D1", "D2", "D3", "D4", "D5", "D6", "D7"],
+      "description": "IRRS dimension codes per PRD §11.1: D1 Discoverability, D2 Comprehensibility, D3 Decision Support, D4 Task Completion, D5 Payment Readiness, D6 Recovery & Help, D7 Cultural Context."
+    },
+    "journey_stage": {
+      "enum": ["discover", "understand", "decide", "act", "pay", "recover", "remember"],
+      "description": "International visitor journey stages per PRD §5.1."
+    },
+    "severity": {
+      "enum": ["S0", "S1", "S2", "S3", "Info"],
+      "description": "S0 Blocker, S1 Critical, S2 Major, S3 Minor, Info suggestion (per PRD §11.2). Severity is never multiplied into scoring weights; S0/S1 findings are reported separately as blocking/critical issues."
+    },
+    "evidence_type": {
+      "enum": ["image", "pdf", "url", "text"],
+      "description": "Evidence types per PRD P0-2. A rule may only require types the ingestion pipeline supports; 'url' means either a registered source or a snapshot (capability decided per release)."
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code", "title", "dimension", "journey_stages", "description",
+        "severity_default", "weight", "evaluation_type", "review_required",
+        "evidence_requirements", "applicability", "rationale", "examples", "status"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^IRRS-D[1-7]-[0-9]{3}$",
+          "description": "Stable business identifier of the rule. Codes are unique within a rule-set version and are the key used by assessments, findings and eval cases. This is NOT the database primary key (runs bind standard_version_id + rule id); renaming a code is a breaking change and requires a new rule-set version."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimension": { "$ref": "#/$defs/dimension" },
+        "journey_stages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/journey_stage" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What is checked, phrased so a reviewer can decide PASS/WARN/FAIL without guessing. Must be answerable strictly from the listed evidence; anything not observable in evidence must end in UNKNOWN, never a guess."
+        },
+        "severity_default": { "$ref": "#/$defs/severity" },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Relative weight inside the dimension (dimension scores normalize by evaluated weight, so absolute size only matters relatively). 0 is legal for placeholder rules but such rules never influence scores."
+        },
+        "evaluation_type": {
+          "enum": ["deterministic", "ai", "hybrid", "human"],
+          "description": "deterministic: decidable by code from evidence metadata. ai: model proposes the conclusion from evidence. hybrid: model proposes, human confirmation mandatory before the result counts as reviewed. human: model may only propose candidates; a human decision is required for any status (e.g. actual payment success)."
+        },
+        "review_required": {
+          "type": "boolean",
+          "description": "When true, the finding does not count as reviewed until a human confirm/edit/na decision exists (PRD §15.3 lists payment, allergen, legal, accessibility topics)."
+        },
+        "evidence_requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min_count", "evidence_types"],
+          "properties": {
+            "min_count": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum number of matching evidence items. If fewer are bound to the run, the correct outcome is UNKNOWN/insufficient_evidence — never a guessed status."
+            },
+            "evidence_types": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/evidence_type" },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "must_show": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Semantic markers the evidence must plausibly show (e.g. qr_landing_page, payment_signage). Used by deterministic candidate filtering and grounding checks; markers are free-form but stable within a rule-set version."
+            }
+          }
+        },
+        "applicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entity_types", "target_locales"],
+          "properties": {
+            "entity_types": {
+              "type": "array",
+              "items": {
+                "enum": ["restaurant", "retail", "museum", "venue", "other"]
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Project entity types the rule applies to. Outside these the rule is N/A (excluded from the applicable set), not UNKNOWN (missing evidence) — the distinction is normative for scoring (ADR-0002)."
+            },
+            "target_locales": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$|^\\*$" },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "BCP-47 target visitor locales the rule applies to, or [\"*\"] for locale-independent rules. The target language decides the perspective of the check (can the target visitor read it?), not the report language."
+            }
+          }
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this rule exists and why this severity/weight. This is the defense when the rule is challenged and the input for human severity/weight review."
+        },
+        "examples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["outcome", "detail"],
+            "properties": {
+              "outcome": { "enum": ["pass", "fail"] },
+              "detail": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "status": {
+          "enum": ["draft", "active", "retired"],
+          "description": "Per-rule status inside the rule set. Only active rules are candidates for new runs; draft rules are carried in the file for review but must not be selected as applicable scoring items."
+        }
+      }
+    }
+  }
+}

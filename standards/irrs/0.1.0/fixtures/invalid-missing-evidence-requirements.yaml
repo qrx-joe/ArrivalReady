@@ -1,0 +1,25 @@
+# 非法 fixture：缺少必需字段 evidence_requirements（缺证据声明的规则会导致 AI 自行猜测取证范围）。
+standard:
+  code: IRRS
+  version: 9.9.9
+  status: draft
+  created_at: "2026-09-07"
+
+rules:
+  - code: IRRS-D5-001
+    title: 缺少证据要求
+    dimension: D5
+    journey_stages: [pay]
+    description: 没有 evidence_requirements 的规则必须被拒绝。
+    severity_default: S1
+    weight: 2
+    evaluation_type: ai
+    review_required: false
+    applicability:
+      entity_types: [restaurant]
+      target_locales: ["*"]
+    rationale: 测试用途。
+    examples:
+      - outcome: fail
+        detail: 示例。
+    status: draft

@@ -1,0 +1,30 @@
+# 非法 fixture：同一 code 出现两次（跨规则唯一性在脚本层校验，schema 不覆盖）。
+standard:
+  code: IRRS
+  version: 9.9.9
+  status: draft
+  created_at: "2026-09-07"
+
+rules:
+  - &dup
+    code: IRRS-D2-001
+    title: 第一条
+    dimension: D2
+    journey_stages: [understand]
+    description: 重复 code 的第一条。
+    severity_default: S1
+    weight: 1
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+    applicability:
+      entity_types: [restaurant]
+      target_locales: ["*"]
+    rationale: 测试用途。
+    examples:
+      - outcome: fail
+        detail: 示例。
+    status: draft
+  - *dup

@@ -1,0 +1,28 @@
+# 非法 fixture：draft 标准包内包含 active 规则——发布只能整包迁移，不允许单条提前生效。
+standard:
+  code: IRRS
+  version: 9.9.9
+  status: draft
+  created_at: "2026-09-07"
+
+rules:
+  - code: IRRS-D4-001
+    title: 草稿包中的 active 规则
+    dimension: D4
+    journey_stages: [act]
+    description: 标准整体为 draft 时规则不得为 active。
+    severity_default: S1
+    weight: 3
+    evaluation_type: ai
+    review_required: false
+    evidence_requirements:
+      min_count: 1
+      evidence_types: [image]
+    applicability:
+      entity_types: [restaurant]
+      target_locales: ["*"]
+    rationale: 测试用途。
+    examples:
+      - outcome: fail
+        detail: 示例。
+    status: active
