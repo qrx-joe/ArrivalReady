@@ -73,7 +73,8 @@
   - DoD：业务层无供应商 SDK import；「一张菜单图 → 合法 assessment JSON」跑通；schema 校验失败走安全失败路径（TECH_SPEC §28）；请求元数据（prompt_version / token / cost）有记录；
   - Owner：AI Tech Lead。**依赖：D-007 供应商已暂定（豆包主 + Qwen-VL 备，待 PO 复核）；若改选其他家，只影响 adapter，不影响本任务结构。**
 
-- [ ] **T-009 Slice 1 打通（本机）**
+- [~] **T-009 Slice 1 打通（本机）**
+  - 当前进展（B05/B06）：项目 CRUD、图片上传闭环（Signed URL → MinIO → 校验 READY）已交付并有集成测试；组织隔离与审计日志就位。**未完成**：B07 job/worker、B08 模型评估、B09 前端工作流；
   - 流程：Create Project → Upload Image（Signed URL → MinIO）→ AI Structured Assessment → Finding（含 evidence_refs）→ 前端 Evidence 展示；
   - DoD：PRD §12.4 的 Magic Moment 在本机可复现——**点开一个 Finding 能看到它引用的证据**；job 失败时用户看到明确的失败态而不是白屏（ADVICE G-10）；
   - Owner：全体。
