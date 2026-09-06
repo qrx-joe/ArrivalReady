@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arrivalready.dev/schemas/assessment-1.0.json",
+  "title": "Assessment",
+  "description": "AI candidate conclusion for ONE rule (TECH_SPEC §7.4, refined by B03). This is a proposal, never an audited fact: grounding validation runs after schema validation, and nothing becomes a Finding until Go persists it. Contract refinements vs the TECH_SPEC example: evidence_refs carry normalized locators (the Magic Moment needs them), and the mapping rule_id -> rule code (not DB id) is explicit (R-10).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rule_id", "status", "severity", "evidence_refs", "confidence", "needs_human_review"],
+  "if": {
+    "properties": { "status": { "enum": ["PASS", "WARN", "FAIL"] } },
+    "required": ["status"]
+  },
+  "then": {
+    "properties": { "evidence_refs": { "minItems": 1 } },
+    "description": "PASS/WARN/FAIL must cite at least one evidence item; a conclusion without evidence is UNKNOWN (US-03: insufficient_evidence). Schema-enforced so fabricated conclusions fail validation before grounding even runs."
+  },
+  "properties": {
+    "rule_id": {
+      "type": "string",
+      "pattern": "^IRRS-D[1-7]-[0-9]{3}$",
+      "description": "The assessed rule's business code. Must exist in the rule set bound to this run; unknown codes are rejected by grounding (Go), not silently dropped. Never the database rule id."
+    },
+    "status": {
+      "enum": ["PASS", "WARN", "FAIL", "UNKNOWN"],
+      "description": "assessment_status axis (see contracts/state-machines.md). UNKNOWN is the honest answer for insufficient/contradictory evidence and must never be pushed into a forced PASS/FAIL (PRD §9 No Fake Certainty)."
+    },
+    "severity": {
+      "enum": ["S0", "S1", "S2", "S3", "Info"],
+      "description": "Candidate severity, usually the rule's severity_default. Reviewers may override via edit; scoring never multiplies severity into weights (ADR-0002)."
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceRef" },
+      "description": "Evidence citations. Every evidence_id must exist in the job's input manifest; the grounding stage drops or downgrades conclusions citing unknown ids (they are data-integrity failures, not findings)."
+    },
+    "observation": {
+      "type": "string",
+      "description": "What was literally observed in the cited evidence (observed_fact). Must be separable from reason (inference)."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why this status follows from the observation, in terms of the rule's description. Inference, not observation."
+    },
+    "recommended_fix": {
+      "type": "string",
+      "description": "Draft remediation suggestion. Non-normative; humans own the fix plan."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Model self-reported confidence in [0,1]. A triage hint for reviewers only; scoring ignores it (ADR-0002 §2.4)."
+    },
+    "needs_human_review": {
+      "type": "boolean",
+      "description": "Model's request for human review. The binding review requirement comes from the rule's review_required flag, not from this field."
+    }
+  },
+  "$defs": {
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "locator"],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "description": "UUIDv7 of an evidence item in THIS run's input manifest. Cross-run or cross-project references are forbidden and rejected."
+        },
+        "locator": { "$ref": "#/$defs/locator" }
+      }
+    },
+    "locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["bbox", "page", "quote", "full"] },
+        "bbox": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "w", "h"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 1 },
+            "y": { "type": "number", "minimum": 0, "maximum": 1 },
+            "w": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "h": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+          },
+          "description": "Image bounding box in ORIGINAL-image normalized coordinates: origin top-left, (x,y) the top-left corner, w/h extents, all in [0,1]. Normalization is against the original resolution, NOT the resized upload, so locators survive re-encoding and zooming."
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "PDF page number (1-based), for type=page."
+        },
+        "quote": {
+          "type": "string",
+          "description": "Exact text span cited, for type=quote. Must be a substring of the evidence's text; over-long or fabricated quotes fail grounding."
+        }
+      }
+    }
+  }
+}

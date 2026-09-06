@@ -63,6 +63,7 @@
 ## C. MVP Slice 1 竖切（最先打通的一条线）
 
 - [ ] **T-007 契约先行：API + Schema 骨架**
+  - 当前进展（B03）：`contracts/` 已建立——[OpenAPI 3.1](contracts/openapi/arrivalready.yaml)（TECH_SPEC §9 全量 13 条端点 + 幂等键 + RFC 9457 错误）、四份 JSON Schema（normalized_evidence / assessment / provider_response / job_payload）、15 个共享正反例 fixture、[状态迁移表](contracts/state-machines.md)（三条状态轴分离，关闭 R-05/R-06 契约面）；离线校验脚本全绿。**未完成**：Go/Python 双端从契约生成或校验类型、spectral lint 进 CI（随 B04 落地）。
   - 产出：`contracts/openapi/` 最小 OpenAPI 3.1（project / evidence / audit / findings 四组端点，TECH_SPEC §9）；`contracts/json-schema/assessment.schema.json`；
   - DoD：Go 与 Python 两端都能从契约生成或校验类型；契约 lint 进 CI（哪怕 CI 只有这一步）；
   - Owner：AI Tech Lead + Application Lead。

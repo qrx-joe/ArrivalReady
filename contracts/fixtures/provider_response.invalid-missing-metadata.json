@@ -1,0 +1,13 @@
+{
+  "outcome": "success",
+  "metadata": {
+    "job_id": "01912345-6789-7abc-9def-0123456789ad",
+    "run_id": "01912345-6789-7abc-9def-0123456789ae",
+    "attempt_token": "01912345-6789-7abc-9def-0123456789af",
+    "prompt_version": "assessment/v1",
+    "schema_version": "assessment-1.0",
+    "input_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requested_at": "2026-09-07T10:05:00Z"
+  },
+  "assessments": []
+}

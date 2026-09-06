@@ -1,0 +1,16 @@
+{
+  "rule_id": "IRRS-D4-001",
+  "status": "FAIL",
+  "severity": "S1",
+  "evidence_refs": [
+    {
+      "evidence_id": "01912345-6789-7abc-9def-0123456789ab",
+      "locator": {
+        "type": "bbox",
+        "bbox": { "x": 0.08, "y": 0.12, "w": 1.5, "h": 0.25 }
+      }
+    }
+  ],
+  "confidence": 0.9,
+  "needs_human_review": false
+}

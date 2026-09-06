@@ -1,0 +1,13 @@
+{
+  "rule_id": "MENU-RULE-1",
+  "status": "FAIL",
+  "severity": "S1",
+  "evidence_refs": [
+    {
+      "evidence_id": "01912345-6789-7abc-9def-0123456789ab",
+      "locator": { "type": "full" }
+    }
+  ],
+  "confidence": 0.9,
+  "needs_human_review": false
+}

@@ -1,0 +1,42 @@
+{
+  "outcome": "success",
+  "metadata": {
+    "job_id": "01912345-6789-7abc-9def-0123456789ad",
+    "run_id": "01912345-6789-7abc-9def-0123456789ae",
+    "attempt_token": "01912345-6789-7abc-9def-0123456789af",
+    "provider": "doubao",
+    "model": "doubao-seed-1.6-vision",
+    "model_version": null,
+    "prompt_version": "assessment/v1",
+    "schema_version": "assessment-1.0",
+    "input_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requested_at": "2026-09-07T10:05:00Z"
+  },
+  "assessments": [
+    {
+      "rule_id": "IRRS-D4-001",
+      "status": "FAIL",
+      "severity": "S1",
+      "evidence_refs": [
+        {
+          "evidence_id": "01912345-6789-7abc-9def-0123456789ab",
+          "locator": { "type": "bbox", "bbox": { "x": 0.08, "y": 0.12, "w": 0.4, "h": 0.25 } }
+        }
+      ],
+      "observation": "QR 点单落地页全中文",
+      "reason": "目标访客无法独立下单",
+      "confidence": 0.91,
+      "needs_human_review": false
+    }
+  ],
+  "attempts": [
+    {
+      "provider": "doubao",
+      "model": "doubao-seed-1.6-vision",
+      "kind": "initial",
+      "latency_ms": 4120,
+      "usage": { "prompt_tokens": 1830, "completion_tokens": 412 },
+      "cost": { "known": false }
+    }
+  ]
+}

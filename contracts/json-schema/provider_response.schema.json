@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arrivalready.dev/schemas/provider-response-1.0.json",
+  "title": "ProviderResponse",
+  "description": "Envelope the Python AI service returns to Go for one job attempt (R-10: provider metadata must never be lost between adapter and persistence; TECH_SPEC §8.3). The Python service returns this over HTTP to the Go worker; it never writes business tables itself. A malformed or failed response must produce an explicit failure state — never a fabricated PASS (TECH_SPEC §28 safe-failure).",
+  "oneOf": [
+    { "$ref": "#/$defs/success" },
+    { "$ref": "#/$defs/failure" }
+  ],
+  "$defs": {
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["known"],
+      "properties": {
+        "known": {
+          "type": "boolean",
+          "description": "false when the provider does not report cost. Unknown cost is recorded as known=false, never as 0 — zero would fabricate a real measurement (B08 verify)."
+        },
+        "amount": { "type": ["number", "null"], "minimum": 0 },
+        "currency": { "type": ["string", "null"], "minLength": 3, "maxLength": 3 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "run_id", "attempt_token", "provider", "model", "prompt_version", "schema_version", "input_hash", "requested_at"],
+      "properties": {
+        "job_id": { "type": "string", "format": "uuid" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "attempt_token": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Issued per job lease. A late response whose attempt_token no longer matches the lease is discarded (cancel/expiry safety, R-11)."
+        },
+        "provider": { "type": "string", "minLength": 1, "description": "Provider adapter id, e.g. doubao, qwen-vl, fake (offline tests)." },
+        "model": { "type": "string", "minLength": 1 },
+        "model_version": { "type": ["string", "null"], "description": "null when the provider does not expose a version identifier — recorded as unknown, never guessed." },
+        "prompt_version": { "type": "string", "pattern": "^[a-z-]+/v[0-9]+$", "description": "e.g. assessment/v1 — must match a versioned prompt file (ADR-0001 layout)." },
+        "schema_version": { "type": "string", "minLength": 1 },
+        "input_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "sha256 over the canonicalized model input (prompt + evidence references + rules). Enables reproducibility checks without storing raw material in logs." },
+        "requested_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "success": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "metadata", "assessments"],
+      "properties": {
+        "outcome": { "const": "success" },
+        "metadata": { "$ref": "#/$defs/metadata" },
+        "assessments": {
+          "type": "array",
+          "items": { "$ref": "https://arrivalready.dev/schemas/assessment-1.0.json" },
+          "description": "Candidate assessments, one per assessed rule. May be empty (no rule assessable) — an empty array is a valid, persistable result and NOT a failure."
+        },
+        "attempts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/attempt" },
+          "description": "All provider calls spent for this outcome, including repairs and fallbacks — the shared request budget (execution plan §6) is accounted from this list."
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "metadata", "error"],
+      "properties": {
+        "outcome": { "const": "failure" },
+        "metadata": { "$ref": "#/$defs/metadata" },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "retryable", "message"],
+          "properties": {
+            "code": {
+              "enum": [
+                "provider_timeout", "provider_auth", "provider_quota",
+                "schema_invalid_after_repair", "grounding_failed",
+                "budget_exhausted", "internal_error"
+              ]
+            },
+            "retryable": {
+              "type": "boolean",
+              "description": "Go decides retry from this flag plus its own lease/budget state; auth and quota errors are never retryable (stop immediately per execution plan §6)."
+            },
+            "message": { "type": "string", "description": "Diagnostic for the job failure record. Must not contain raw evidence content or credentials (TECH_SPEC §15.3)." },
+            "attempts": { "type": "array", "items": { "$ref": "#/$defs/attempt" } }
+          }
+        }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "kind", "latency_ms"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["initial", "repair", "fallback"],
+          "description": "initial/repair/fallback all count against the shared provider-request budget."
+        },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "prompt_tokens": { "type": ["integer", "null"], "minimum": 0 },
+            "completion_tokens": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "cost": { "$ref": "#/$defs/cost" }
+      }
+    }
+  }
+}

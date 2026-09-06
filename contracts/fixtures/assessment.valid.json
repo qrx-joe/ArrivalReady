@@ -1,0 +1,19 @@
+{
+  "rule_id": "IRRS-D4-001",
+  "status": "FAIL",
+  "severity": "S1",
+  "evidence_refs": [
+    {
+      "evidence_id": "01912345-6789-7abc-9def-0123456789ab",
+      "locator": {
+        "type": "bbox",
+        "bbox": { "x": 0.08, "y": 0.12, "w": 0.4, "h": 0.25 }
+      }
+    }
+  ],
+  "observation": "QR 点单落地页全中文，无语言切换入口",
+  "reason": "目标访客（en）无法独立完成选品与下单",
+  "recommended_fix": "落地页增加 en/ja 语言切换并保持流程完整",
+  "confidence": 0.91,
+  "needs_human_review": false
+}

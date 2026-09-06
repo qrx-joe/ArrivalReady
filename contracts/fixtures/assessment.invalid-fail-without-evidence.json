@@ -1,0 +1,8 @@
+{
+  "rule_id": "IRRS-D4-001",
+  "status": "FAIL",
+  "severity": "S1",
+  "evidence_refs": [],
+  "confidence": 0.9,
+  "needs_human_review": false
+}
