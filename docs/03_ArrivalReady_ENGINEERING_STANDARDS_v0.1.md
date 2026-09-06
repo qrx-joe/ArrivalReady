@@ -380,6 +380,7 @@ export function EvidenceViewer({ evidence, locators }: Props) { ... }
 
 - **分支**：main 受保护；分支名 `feat/xxx`、`fix/xxx`、`docs/xxx`；存活 ≤ 2 天；
 - **合并**：squash merge；小团队阶段允许自审自并，但 §7.2 检查单必须逐项过；
+- **批次边界**（2026-09-07 B01 补充，D-013）：一个执行批次一个短分支与一个 PR；squash 只限本批，禁止把多个执行批次合成一个提交/PR（执行方案 §7.1）；
 - **提交**：Conventional Commits；一步一提交（一个完整最小变更 = 一次提交）；
 - **里程碑**：比赛 / 演示节点打 tag（如 `v0.1.0-demo`），tag 必须指向 CI 全绿的 commit；
 - **镜像**：禁止 `latest` 上生产；tag 与 git commit 关联（TECH_SPEC §24）；

@@ -3,6 +3,7 @@
 > 文档版本：v0.1（Opportunity Validation / MVP）  
 > 日期：2026-09-07  
 > 状态：**候选项目，尚未完成 E2/E3 需求验证，不应把市场假设写成已验证事实**  
+> 同步注记（2026-09-07，B01）：需求→批次映射与范围裁决状态见 [需求矩阵](requirements-matrix.md)；P0-2 中 URL「来源登记」与「自动抓取」的拆分及任何 P0 范围变化均为草案（决策 D-011），未经 PO 确认不改变本文件 P0 定义。  
 > 赛道：沪潮涌江与远航｜AI 城市内容与品牌出海实验室  
 > 产品负责人：Product Owner  
 > 技术负责人：AI Tech Lead / Application Lead / Production Lead  

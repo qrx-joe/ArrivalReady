@@ -2,6 +2,7 @@
 
 > 文档版本：v0.1  
 > 日期：2026-09-07  
+> 同步注记（2026-09-07，B01）：§8.1 目录来源已按 [ADR-0001](adr/0001-canonical-repository-layout.md) 修订（关闭审查项 R-09）；范围映射见[需求矩阵](requirements-matrix.md)。其余章节不变。  
 > 目标：支持 Competition MVP，同时保证后续可扩展、可维护、可测试、可观测、可替换模型  
 > 原则：**先模块化单体 / 少服务，后按真实负载拆分；不为黑客松制造分布式系统。**
 
@@ -597,22 +598,26 @@ AI Service 不返回最终 Score。
 
 ## 8.1 文件结构
 
+> 2026-09-07 修订（ADR-0001 / R-09）：本节原 `ai/` 候选布局废弃。schema、规则、评测的唯一目录以 §22 仓库结构为准——契约归 `contracts/`，规则归 `standards/`，评测归 `evals/`，Prompt 归 `services/ai/prompts/`。
+
 ```text
-ai/
-  prompts/
-    extraction/
-      v1.md
-    assessment/
-      v1.md
-    fix/
-      v1.md
-  schemas/
+contracts/
+  json-schema/
     normalized_evidence.schema.json
     assessment.schema.json
-  rules/
-    irrs/
-      0.1.0.yaml
-  evals/
+standards/
+  irrs/
+    0.1.0/
+      rules.yaml
+services/ai/prompts/
+  extraction/
+    v1.md
+  assessment/
+    v1.md
+  fix/
+    v1.md
+evals/
+  datasets/
     golden/
 ```
 

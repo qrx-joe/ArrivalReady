@@ -17,10 +17,13 @@
 | 03 | [docs/03_ArrivalReady_ENGINEERING_STANDARDS_v0.1.md](docs/03_ArrivalReady_ENGINEERING_STANDARDS_v0.1.md) | 工程规范：技术选型依据、同类产品制作规范、行业规范清单、注释与文档规范 |
 | 04 | [docs/04_DOCUMENT_REVIEW_2026-09-07.md](docs/04_DOCUMENT_REVIEW_2026-09-07.md) | 文档审查：16 项实施缺口、原文依据与关闭标准 |
 | 05 | [docs/05_EXECUTION_PLAN_v0.1.md](docs/05_EXECUTION_PLAN_v0.1.md) | 详细执行方案：16 个批次、依赖、验证门禁、提交与数据回滚策略 |
+| — | [docs/requirements-matrix.md](docs/requirements-matrix.md) | 需求矩阵：P0/US → 批次映射与范围裁决状态（暂定/已定可区分） |
+| — | [docs/adr/](docs/adr/README.md) | 架构决策记录（MADR）索引 |
 | — | [TODO.md](TODO.md) | 当前周期任务清单（滚动更新） |
 | — | [TODO_NEXT.md](TODO_NEXT.md) | 下一阶段任务队列（按依赖排序，带拉入条件） |
 | — | [COMMUNICATING.md](COMMUNICATING.md) | 人机协作记录 + 决策日志 |
 | — | [ADVICE.md](ADVICE.md) | AI 建议 / 不确定点 / 遗漏点清单 |
+| — | [AGENTS.md](AGENTS.md) | 协作与执行约定（AI 会话与人类协作者开工前必读） |
 
 ## 快速开始
 
