@@ -46,8 +46,21 @@ def build_model() -> tuple[object | None, str]:
     )
 
 
-async def assess_payload(raw: bytes, payload: dict[str, Any] | None) -> dict[str, Any]:
-    model, reason = build_model()
+# Sentinel distinguishing "no adapter injected" from "an injected None" —
+# build_model() itself may legitimately report that no adapter is available.
+_UNSET = object()
+
+
+async def assess_payload(
+    raw: bytes,
+    payload: dict[str, Any] | None,
+    model: object | None = _UNSET,
+    model_reason: str = "",
+) -> dict[str, Any]:
+    if model is _UNSET:
+        model, reason = build_model()
+    else:
+        reason = model_reason
     if model is None or payload is None:
         source = payload or {}
         job_id = str(source.get("job_id", "00000000-0000-0000-0000-000000000000"))
