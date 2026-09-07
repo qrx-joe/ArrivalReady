@@ -46,6 +46,11 @@
       "enum": ["not_required", "pending", "done"],
       "description": "Face/PII redaction bookkeeping (TECH_SPEC §15.1). MVP default: not_required only when the evidence demonstrably contains no personal data paths."
     },
+    "content_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Short-lived presigned GET URL injected by the Go worker at job-build time (B08 contract amendment). Vision models read evidence through it; storage credentials never leave Go. Never persisted."
+    },
     "metadata": { "type": "object", "additionalProperties": true }
   },
   "$defs": {

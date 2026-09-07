@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/storage"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/store"
 )
 
@@ -19,7 +21,7 @@ import (
 // presigned URLs) is deliberately not decided here — the B07 payload carries
 // manifest metadata only, because the real assessment pipeline lands in B08
 // together with that contract amendment.
-func BuildAuditPayload(db *store.DB, rulesPath string) func(context.Context, *store.ClaimedJob) ([]byte, error) {
+func BuildAuditPayload(db *store.DB, objectStore storage.Store, rulesPath string) func(context.Context, *store.ClaimedJob) ([]byte, error) {
 	return func(ctx context.Context, claimed *store.ClaimedJob) ([]byte, error) {
 		var run struct {
 			ProjectID    uuid.UUID
@@ -59,7 +61,7 @@ func BuildAuditPayload(db *store.DB, rulesPath string) func(context.Context, *st
 			if err != nil {
 				return nil, fmt.Errorf("manifest evidence %s: %w", m.EvidenceID, err)
 			}
-			evidence = append(evidence, map[string]any{
+			item := map[string]any{
 				"evidence_id":       e.ID,
 				"project_id":        e.ProjectID,
 				"type":              e.Type,
@@ -70,7 +72,15 @@ func BuildAuditPayload(db *store.DB, rulesPath string) func(context.Context, *st
 				"journey_stage":     e.JourneyStage,
 				"processing_status": e.ProcessingStatus,
 				"captured_at":       e.CapturedAt,
-			})
+			}
+			// B08 contract amendment: vision models read images via a
+			// short-lived presigned GET; storage credentials never leave Go.
+			if objectStore != nil && e.ObjectKey != "" && (e.Type == "image" || e.Type == "pdf") {
+				if url, err := objectStore.PresignGet(ctx, e.ObjectKey, 15*time.Minute); err == nil {
+					item["content_url"] = url
+				}
+			}
+			evidence = append(evidence, item)
 		}
 
 		return json.Marshal(map[string]any{

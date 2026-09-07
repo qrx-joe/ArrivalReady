@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/storage"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/store"
 )
 
@@ -64,6 +65,7 @@ type Worker struct {
 	DB           *store.DB
 	AI           AIClient
 	RulesPath    string // bound rules.yaml; hash must match the run's snapshot
+	Storage      storage.Store
 	Lease        time.Duration
 	Interval     time.Duration
 	BuildPayload func(ctx context.Context, claimed *store.ClaimedJob) ([]byte, error)
