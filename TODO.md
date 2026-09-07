@@ -68,7 +68,9 @@
   - DoD：Go 与 Python 两端都能从契约生成或校验类型；契约 lint 进 CI（哪怕 CI 只有这一步）；
   - Owner：AI Tech Lead + Application Lead。
 
-- [ ] **T-008 模型 Provider Adapter + Prompt v1**
+- [~] **T-008 模型 Provider Adapter + Prompt v1**
+  - 当前进展（B08，2026-09-07）：StepFun 适配器（D-016 supersedes D-007）+ assessment/v1、extraction/v1 版本化 Prompt + 离线 eval runner（5 类 fixture，进 CI）已交付；**首次真实调用冒烟通过**——自制菜单图 → 合法 assessment JSON（step-1o-turbo-vision，2 次请求 / 1,175 tokens / 7.9s，cost=unknown 如实记录）。**未完成**：真实门店菜单图验证（随 T-006 素材）、备用 provider 与 fallback（未接通不声称已验证）。
+  - 原产出与 DoD：
   - 产出：`StructuredModel` Protocol + 首个供应商 adapter（含 retry / fallback）+ `ai/prompts/extraction/v1.md`、`ai/prompts/assessment/v1.md`（版本化文件，不写死在代码里）；
   - DoD：业务层无供应商 SDK import；「一张菜单图 → 合法 assessment JSON」跑通；schema 校验失败走安全失败路径（TECH_SPEC §28）；请求元数据（prompt_version / token / cost）有记录；
   - Owner：AI Tech Lead。**依赖：D-007 供应商已暂定（豆包主 + Qwen-VL 备，待 PO 复核）；若改选其他家，只影响 adapter，不影响本任务结构。**
@@ -86,7 +88,7 @@
 | 任务 | 阻塞点 | 需要谁解除 |
 |---|---|---|
 | T-001 | 时间线 / 供应商 / 团队 / 验证顺序 四项决策讨论中 | Product Owner |
-| T-008 | 依赖 D-007（模型供应商） | Product Owner |
+| T-008 | ~~依赖 D-007~~ 已由 D-016 解除（StepFun） | Product Owner |
 
 ## Archive
 

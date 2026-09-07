@@ -12,6 +12,16 @@
 
 ## 1. 协作会话记录
 
+### S-8 ｜ 2026-09-07 ｜ 执行 B07/B08：可恢复任务与真实模型接入
+- **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
+- **决策**：D-016 模型供应商选定阶跃星辰（StepFun），supersedes D-007；API key 由 PO 配置于 services/ai/.env（gitignored，不入库）。
+- **结果**：
+  - B07（PR #12）：audit_runs/jobs/findings 迁移、SKIP LOCKED 并发领取、租约+attempt token、重试耗尽与取消语义、原子落库（集成测试实测并修复『取消晚到 success 仍提交 findings』的落库顺序缺陷）；Python /internal/assess 契约端点。
+  - B08（PR #13/#14）：StepFun 视觉适配器（共享请求预算、auth/quota 不可重试、JSON repair）、assessment/v1 + extraction/v1 版本化 Prompt、content_url 预签名读图（契约修订）、5 类离线 eval fixture + runner 进 CI。
+  - 易用性（PR #15）：模型凭据支持 services/ai/.env 文件配置（PO 反馈原配置找不到入口），.env.template 模板入库。
+- **首次真实调用冒烟（2026-09-07）**：自制菜单图 fixture（明确标注非真实门店）→ step-1o-turbo-vision → 合法 assessment JSON；2 次 provider 请求（models 列表 + 1 次 chat，预算 6）、1,175 tokens、7.9s、cost=unknown 如实记录。判定合理：D2 语言可达 PASS、D5 支付 WARN（无国际卡标识）。
+- **遗留问题**：D-006/D-009 与 D-011/D-012 仍待 PO；ADR-0002 评分语义待审定（B10 前置）；T-006 真实素材未开始（B15 前置）；本机 Docker 引擎未修复（T-003 compose 探活）；下一批 B09（前端证据工作流）。
+
 ### S-7 ｜ 2026-09-07 ｜ 执行 B05/B06：认证租户与证据闭环
 - **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
 - **结果**：
