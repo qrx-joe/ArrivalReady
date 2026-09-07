@@ -107,6 +107,7 @@
 | D-019 | 2026-09-07 | **IRRS 0.1.0 首批 10 条规则按草案生效**（severity/weight 逐条认可；D5-002 支付实际可用纯人工、缺证据必 UNKNOWN） | ✅ 已定（PO 确认） | T-004 部分：30–50 条扩充仍开放 |
 | D-020 | 2026-09-07 | **交互与语言策略确认**：评估字段英文、报告展示中文、证据保留原文；手机上传/人审可用 | ✅ 已定（PO 确认） | supersedes D-012 草案状态 |
 | D-021 | 2026-09-07 | **URL 自动抓取：批准做，但因 deadline 显式声明本期未完成**（SSRF 隔离执行器为 2–3 人日工作量，时间盒内不可交付）；URL 来源登记保留；此为 P0 未完成项，进交付声明 | 🟡 已批准 / 本期未完成 | supersedes D-011 中 URL 部分裁剪悬置；D-011 其余确认 |
+| D-022 | 2026-09-07 | **前端视觉契约落地（原生 CSS + 语义 Token）**：按 FirstGuest_Frontend_Design_Spec_v0.1 引入 `apps/web/styles/`（tokens.css 唯一 Token 源含深浅色 + globals.css 基线 + components.css 语义组件层）；不引入 Tailwind/UI Kit；AppShell 侧边导航只挂真实路由、未实现项显式标「规划中」；品牌蓝与 PASS/WARN/FAIL 状态色分离 | ✅ 已定（工程约定） | docs/03 §6/§7；apps/web/styles/；组件禁止写死业务颜色 |
 
 > 注：D-006 ～ D-009 为 AI 代拟的暂定项（讨论发起后未获 PO 回复），D-011/D-012 为 B01 草案——以上均**不是已确认决策**。确认或变更时**不要修改历史行**：按 D-014 追加新行并注明 `supersedes D-0XX`。
 
