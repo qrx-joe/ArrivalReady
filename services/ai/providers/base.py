@@ -133,7 +133,6 @@ class StepFunVisionModel:
             "response_format": {"type": "json_object"},
         }
         raw = json.dumps(payload, sort_keys=True).encode()
-        model_label = f"stepfun/{self.model_id}"
 
         if not self.api_key:
             return failure_response(
