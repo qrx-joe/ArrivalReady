@@ -12,6 +12,14 @@ import { useEffect, useState } from "react";
 
 import { ApiError, api, FindingSummary, getToken } from "@/lib/api";
 
+type ScoreReport = {
+  total_score: number | null;
+  partial: boolean;
+  coverage_pct: number;
+  dimensions: { dimension: string; score: number; applicable_weight?: number }[];
+  blocking: { rule_id: string; severity: string }[];
+};
+
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const STATUS_LABEL: Record<string, string> = {
   QUEUED: "排队中",
@@ -35,6 +43,7 @@ export default function AuditPage() {
   const [run, setRun] = useState<AuditPageRun | null>(null);
   const [findings, setFindings] = useState<FindingSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<ScoreReport | null>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -94,6 +103,47 @@ export default function AuditPage() {
       )}
       {!TERMINAL.has(run.status) && (
         <p className="mb-4 rounded bg-blue-50 p-3 text-blue-700">AI 分析进行中，页面自动刷新…</p>
+      )}
+      {run.status === "REVIEW_REQUIRED" && (
+        <section className="mb-6 rounded border p-4">
+          <h2 className="mb-2 font-medium">报告</h2>
+          <button
+            className="rounded bg-black px-4 py-2 font-medium text-white"
+            onClick={async () => {
+              try {
+                const r = await api.finalizeAudit(run.id);
+                setReport(r);
+              } catch (e) {
+                setError(e instanceof ApiError ? e.message : "finalize 失败");
+              }
+            }}
+          >
+            生成报告（冻结评分）
+          </button>
+          {report && (
+            <div className="mt-3 text-sm">
+              <p className="font-semibold">
+                总分：
+                {report.total_score === null
+                  ? "部分评估（未出总分）"
+                  : `${report.total_score} / 100`}
+                <span className="ml-2 text-gray-500">覆盖率 {report.coverage_pct}%</span>
+              </p>
+              <ul className="mt-2 space-y-1">
+                {report.dimensions.map((d) => (
+                  <li key={d.dimension}>
+                    {d.dimension}: {d.score}
+                  </li>
+                ))}
+              </ul>
+              {report.blocking.length > 0 && (
+                <p className="mt-2 text-red-700">
+                  阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
       )}
 
       {TERMINAL.has(run.status) && findings.length === 0 && (

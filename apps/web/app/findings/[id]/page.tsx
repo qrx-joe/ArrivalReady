@@ -10,9 +10,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { ApiError, api, getToken } from "@/lib/api";
+import { ApiError, api, FindingSummary, getToken } from "@/lib/api";
 
 type Finding = {
   id: string;
@@ -34,9 +34,57 @@ type EvidenceImage = { id: string; url: string | null; status: string };
 
 export default function FindingPage() {
   const params = useParams<{ id: string }>();
-  const [finding, setFinding] = useState<Finding | null>(null);
+  const [finding, setFinding] = useState<FindingSummary | null>(null);
   const [images, setImages] = useState<EvidenceImage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submitReview = useCallback(
+    async (decision: string, edits?: { assessment_status?: string }, naReason?: string) => {
+      if (!finding) return;
+      setBusy(true);
+      setReviewError(null);
+      try {
+        const updated = (await api.submitReview(finding.id, {
+          decision,
+          edits,
+          na_reason: naReason,
+        })) as FindingSummary;
+        setFinding(updated);
+      } catch (e) {
+        setReviewError(e instanceof ApiError ? e.message : "提交失败");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [finding],
+  );
+
+  const askNa = useCallback(async () => {
+    if (!finding) return;
+    const reason = window.prompt("NA 必须留理由（为什么此项不适用）：");
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setReviewError("NA 必须填写理由");
+      return;
+    }
+    await submitReview("na", undefined, reason);
+  }, [finding, submitReview]);
+
+  const askEdit = useCallback(async () => {
+    if (!finding) return;
+    const status = window.prompt(
+      "修订结论（PASS / WARN / FAIL / UNKNOWN）：",
+      finding.assessment_status,
+    );
+    if (status === null) return;
+    if (!["PASS", "WARN", "FAIL", "UNKNOWN"].includes(status)) {
+      setReviewError("结论必须是 PASS/WARN/FAIL/UNKNOWN");
+      return;
+    }
+    await submitReview("edit", { assessment_status: status });
+  }, [finding, submitReview]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -99,6 +147,51 @@ export default function FindingPage() {
             : `人审：${finding.review_status}`}
         </span>
       </div>
+
+      {finding.review_status !== "UNREVIEWED" ? (
+        <p className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          已处置：{finding.review_status}（处置记录不可覆盖；更正产生新记录）
+        </p>
+      ) : (
+        <section className="mb-4 rounded border p-3 text-sm">
+          <p className="mb-2 font-medium">人审处置（AI Suggests, Human Owns）</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="rounded border px-3 py-1.5 hover:bg-green-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => submitReview("confirm")}
+            >
+              确认
+            </button>
+            <button
+              className="rounded border px-3 py-1.5 hover:bg-amber-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={askEdit}
+            >
+              修订结论
+            </button>
+            <button
+              className="rounded border px-3 py-1.5 hover:bg-red-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => submitReview("reject")}
+            >
+              驳回
+            </button>
+            <button
+              className="rounded border px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={askNa}
+            >
+              标记 NA
+            </button>
+          </div>
+          {reviewError && <p className="mt-2 text-red-700">{reviewError}</p>}
+          <p className="mt-2 text-xs text-gray-400">
+            确认=采纳候选；修订=给出人工结论（保留 AI 原始候选）；驳回≠通过（无替代结论时保留
+            UNKNOWN）；NA 需留理由并缩小评分范围。
+          </p>
+        </section>
+      )}
 
       {images.map((img, i) => {
         const bbox = finding.evidence_refs[i]?.locator.bbox;

@@ -134,6 +134,36 @@ export const api = {
       findings: FindingSummary[];
     }>(`/audits/${auditID}`),
 
+  submitReview: (
+    findingID: string,
+    body: {
+      decision: string;
+      note?: string;
+      edits?: { assessment_status?: string };
+      na_reason?: string;
+    },
+  ) =>
+    request<FindingSummary>(`/findings/${findingID}/reviews`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  finalizeAudit: (auditID: string) =>
+    request<{
+      total_score: number | null;
+      partial: boolean;
+      coverage_pct: number;
+      dimensions: { dimension: string; score: number }[];
+      blocking: { rule_id: string; severity: string }[];
+    }>(`/audits/${auditID}/finalize`, { method: "POST", body: JSON.stringify({}) }),
+  updateTask: (
+    findingID: string,
+    body: { workflow_status: string; version: number; reason?: string },
+  ) =>
+    request<{ workflow_status: string }>(`/findings/${findingID}/task`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
   getEvidence: (evidenceID: string) =>
     request<{
       id: string;
@@ -142,22 +172,7 @@ export const api = {
       download_url: string | null;
       sha256: string;
     }>(`/evidence/${evidenceID}`),
-  getFinding: (findingID: string) =>
-    request<{
-      id: string;
-      rule_id: string;
-      assessment_status: string;
-      severity: string;
-      observation: string | null;
-      reason: string | null;
-      recommended_fix: string | null;
-      confidence: number;
-      review_status: string;
-      evidence_refs: {
-        evidence_id: string;
-        locator: { type: string; bbox?: { x: number; y: number; w: number; h: number } };
-      }[];
-    }>(`/findings/${findingID}`),
+  getFinding: (findingID: string) => request<FindingSummary>(`/findings/${findingID}`),
 };
 
 export type FindingSummary = {
@@ -166,8 +181,11 @@ export type FindingSummary = {
   assessment_status: "PASS" | "WARN" | "FAIL" | "UNKNOWN";
   severity: string;
   observation: string | null;
+  reason: string | null;
+  recommended_fix: string | null;
   confidence: number;
   review_status: string;
+  original_candidate: unknown;
   evidence_refs: {
     evidence_id: string;
     locator: { type: string; bbox?: { x: number; y: number; w: number; h: number } };

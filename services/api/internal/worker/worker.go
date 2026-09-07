@@ -329,6 +329,7 @@ type StandardFile struct {
 		Dimension       string `yaml:"dimension"`
 		Description     string `yaml:"description"`
 		SeverityDefault string `yaml:"severity_default"`
+		Weight          int    `yaml:"weight"`
 		Status          string `yaml:"status"`
 		Applicability   struct {
 			EntityTypes   []string `yaml:"entity_types"`

@@ -65,7 +65,11 @@ func main() {
 
 	authn := buildAuthenticator(cfg, logger)
 	objectStore := buildObjectStore(cfg, logger)
-	auditSvc, workerSvc := buildAudit(cfg, logger, pool, objectStore)
+	rulesPath, rulesErr := worker.ResolveStandardsPath(cfg.StandardsRulesPath)
+	if rulesErr != nil {
+		logger.Error("standards rules file not found", "error", rulesErr)
+	}
+	auditSvc, workerSvc := buildAudit(cfg, logger, pool, objectStore, rulesPath)
 
 	var testSigner api.DevTokenSigner // non-nil only with the local test identity
 	if ta, ok := authn.(interface {
@@ -109,7 +113,7 @@ func main() {
 		}
 
 		if authn != nil && db != nil && evidenceSvc != nil {
-			server := &api.Server{DB: db, Evidence: evidenceSvc, Audit: auditSvc}
+			server := &api.Server{DB: db, Evidence: evidenceSvc, Audit: auditSvc, RulesPath: rulesPath}
 			v.Group(func(pr chi.Router) {
 				pr.Use(auth.Middleware(authn, db))
 				server.RegisterRoutes(pr)
@@ -180,15 +184,10 @@ func buildAuthenticator(cfg config.Config, logger *slog.Logger) auth.Authenticat
 
 // buildAudit wires the audit service and, when the full stack exists (DB +
 // AI service URL + bound rules file), the background assessment worker.
-func buildAudit(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, objectStore storage.Store) (*audit.Service, *worker.Worker) {
-	if cfg.AIServiceURL == "" || pool == nil {
-		logger.Warn("audit subsystem not configured (AI_SERVICE_URL or DATABASE_URL empty)")
+func buildAudit(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, objectStore storage.Store, rulesPath string) (*audit.Service, *worker.Worker) {
+	if cfg.AIServiceURL == "" || pool == nil || rulesPath == "" {
+		logger.Warn("audit subsystem not configured (AI_SERVICE_URL / DATABASE_URL / rules file)")
 		return nil, nil
-	}
-	rulesPath, err := worker.ResolveStandardsPath(cfg.StandardsRulesPath)
-	if err != nil {
-		logger.Error("standards rules file not found", "error", err)
-		os.Exit(1)
 	}
 	svc := &audit.Service{DB: &store.DB{Pool: pool}, RulesPath: rulesPath}
 	w := &worker.Worker{
