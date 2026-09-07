@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
-Write-Host "[1/4] 启动 Go API :8080（本地测试身份 + 伪造模型开关关闭：fake 在 AI 侧）" -ForegroundColor Cyan
+Write-Host "[1/4] 启动 Go API :8080（本地测试身份）" -ForegroundColor Cyan
 $apiEnv = @{
     DATABASE_URL                  = "postgres://postgres@127.0.0.1:54329/arrival_test?sslmode=disable"
     ARRIVAL_ENABLE_TEST_IDENTITY  = "1"
@@ -28,12 +28,23 @@ Start-Process powershell -ArgumentList @(
     "; go run ./cmd/api"
 )
 
-Write-Host "[2/4] 启动 AI Service :8100（ARRIVAL_FAKE_MODEL=1，离线确定性）" -ForegroundColor Cyan
-Start-Process powershell -ArgumentList @(
-    "-NoExit", "-Command",
-    "Set-Location '$RepoRoot\services\ai'; " +
-    "`$env:ARRIVAL_FAKE_MODEL='1'; uv run uvicorn app.main:app --port 8100"
-)
+# 模型模式跟随配置：services/ai/.env 配有 MODEL_API_KEY 时走真实模型，
+# 否则才退回离线确定性 fake——演示宣称与实际运行必须一致。
+$aiEnv = "Set-Location '$RepoRoot\services\ai'; "
+if (Test-Path "$RepoRoot\services\ai\.env") {
+    $hasKey = Select-String -Path "$RepoRoot\services\ai\.env" -Pattern '^\s*MODEL_API_KEY\s*=\s*\S' -Quiet
+    if ($hasKey) {
+        Write-Host "[2/4] 启动 AI Service :8100（真实模型：.env 检出 MODEL_API_KEY）" -ForegroundColor Cyan
+    } else {
+        Write-Host "[2/4] 启动 AI Service :8100（ARRIVAL_FAKE_MODEL=1，离线确定性）" -ForegroundColor Cyan
+        $aiEnv += "`$env:ARRIVAL_FAKE_MODEL='1'; "
+    }
+} else {
+    Write-Host "[2/4] 启动 AI Service :8100（ARRIVAL_FAKE_MODEL=1，离线确定性）" -ForegroundColor Cyan
+    $aiEnv += "`$env:ARRIVAL_FAKE_MODEL='1'; "
+}
+$aiEnv += "uv run uvicorn app.main:app --port 8100"
+Start-Process powershell -ArgumentList @("-NoExit", "-Command", $aiEnv)
 
 Write-Host "[3/4] 启动 Web :3000" -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(

@@ -54,3 +54,8 @@ Thumbs.db
 smoke_menu.jpg
 apps/web/test-results/
 apps/web/playwright-report/
+
+# ===== 演示录制产物与本地进程日志 =====
+scripts/demo/artifacts/
+apps/web/webdev.log
+services/ai/uvicorn.log

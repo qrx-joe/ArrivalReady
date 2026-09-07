@@ -82,11 +82,15 @@ for i, f in enumerate(findings):
             {"decision": "na", "na_reason": "e2e: 不适用于本次验收"}, auth)
 step(f"reviewed {len(findings)} findings")
 
-# duplicate review must conflict
-dup = req(f"{BASE}/findings/{findings[0]['id']}/reviews", "POST",
-          {"decision": "confirm"}, auth)
-assert "error" in json.dumps(dup) or dup is not None
-step("duplicate review rejected (conflict path verified via API contract)")
+# duplicate review must conflict (409) — req() exits on HTTPError, so a
+# successful 4xx/5xx must be asserted here, never assumed.
+try:
+    req(f"{BASE}/findings/{findings[0]['id']}/reviews", "POST",
+        {"decision": "confirm"}, auth)
+    raise SystemExit("duplicate review unexpectedly succeeded — conflict path broken")
+except urllib.error.HTTPError as e:
+    assert e.code == 409, f"duplicate review returned {e.code}, want 409"
+step("duplicate review rejected with 409（不可覆盖语义实测）")
 
 # 5. finalize → report
 report = req(f"{BASE}/audits/{rid}/finalize", "POST", {}, auth)["data"]
@@ -99,10 +103,14 @@ req(f"{BASE}/findings/{first}/task", "PATCH",
     {"workflow_status": "ACKNOWLEDGED", "version": 1, "reason": "e2e"}, auth)
 req(f"{BASE}/findings/{first}/task", "PATCH",
     {"workflow_status": "FIXING", "version": 2, "reason": "e2e"}, auth)
-bad = req(f"{BASE}/findings/{first}/task", "PATCH",
-          {"workflow_status": "OPEN", "version": 3, "reason": "illegal"}, auth)
-assert "_http" in str(bad) or "error" in json.dumps(bad).lower() or True
-step("task OPEN→ACKNOWLEDGED→FIXING OK (非法迁移拒绝路径已由 API 契约覆盖)")
+# illegal transition + stale version must both be rejected by the server
+try:
+    req(f"{BASE}/findings/{first}/task", "PATCH",
+        {"workflow_status": "OPEN", "version": 3, "reason": "illegal"}, auth)
+    raise SystemExit("illegal transition OPEN←FIXING unexpectedly succeeded")
+except urllib.error.HTTPError as e:
+    assert e.code in (409, 422), f"illegal transition returned {e.code}, want 409/422"
+step("task OPEN→ACKNOWLEDGED→FIXING OK；非法回退被拒（实测 409/422）")
 
 # 7. retest + diff
 retest = req(f"{BASE}/audits/{rid}/retest", "POST", {},
