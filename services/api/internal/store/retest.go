@@ -6,6 +6,7 @@ package store
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"github.com/google/uuid"
 
@@ -41,9 +42,9 @@ func (d *DB) CreateRetestRun(ctx context.Context, actor auth.Actor, parentRunID 
 // DiffEntry aligns parent and child findings by stable rule key (R-07).
 type DiffEntry struct {
 	RuleID     string `json:"rule_id"`
-	Parent     string // parent effective/assessment status, "" when absent
-	Child      string // child assessment status, "" when absent
-	Comparable bool
+	Parent     string `json:"parent"` // parent effective/assessment status, "" when absent
+	Child      string `json:"child"`  // child assessment status, "" when absent
+	Comparable bool   `json:"comparable"`
 }
 
 // DiffAgainstParent compares the run's findings with its parent's by rule_id.
@@ -59,8 +60,8 @@ func (d *DB) DiffAgainstParent(ctx context.Context, actor auth.Actor, runID uuid
 	parentStatus := map[string]string{}
 	rows, err := d.Pool.Query(ctx, `
 		SELECT rule_id, COALESCE(effective_status, assessment_status)
-		FROM findings WHERE audit_run_id = $1
-	`, *child.ParentRunID)
+		FROM findings WHERE audit_run_id = $1 AND organization_id = $2
+	`, *child.ParentRunID, actor.OrganizationID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -77,8 +78,8 @@ func (d *DB) DiffAgainstParent(ctx context.Context, actor auth.Actor, runID uuid
 	childStatus := map[string]string{}
 	childRows, err := d.Pool.Query(ctx, `
 		SELECT rule_id, COALESCE(effective_status, assessment_status)
-		FROM findings WHERE audit_run_id = $1
-	`, runID)
+		FROM findings WHERE audit_run_id = $1 AND organization_id = $2
+	`, runID, actor.OrganizationID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -115,5 +116,7 @@ func (d *DB) DiffAgainstParent(ctx context.Context, actor auth.Actor, runID uuid
 	if len(entries) == 0 {
 		note = "no findings on either side"
 	}
+	// Deterministic order (map iteration is randomized): by stable rule key.
+	sort.Slice(entries, func(i, j int) bool { return entries[i].RuleID < entries[j].RuleID })
 	return entries, note, nil
 }

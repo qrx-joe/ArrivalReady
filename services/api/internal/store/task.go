@@ -15,6 +15,12 @@ import (
 
 var ErrIllegalTransition = errors.New("illegal workflow transition")
 
+// ErrResolveWithoutRetest guards the contract rule (state-machines.md §4):
+// READY_FOR_RETEST→RESOLVED is only legitimate when a CHILD retest run has a
+// human-confirmed PASS for the same rule key — clicking through the UI must
+// not manufacture a resolution.
+var ErrResolveWithoutRetest = errors.New("RESOLVED requires a human-confirmed PASS in a retest run for this rule")
+
 // legalTransitions per state-machines.md §4 (from → allowed to-set).
 // RESOLVED is terminal: a later retest failure creates a NEW finding/task
 // instead of resurrecting this one (历史不被覆盖, R-06).
@@ -58,11 +64,12 @@ func (d *DB) EnsureFixTask(ctx context.Context, actor auth.Actor, findingID uuid
 }
 
 // TransitionFixTask validates the transition, applies it with optimistic
-// locking and records the event row — one transaction. Human "改好了" only
-// reaches READY_FOR_RETEST; RESOLVED requires the retest evidence (B11
+// locking (caller echoes the version it read; mismatch = conflict) and
+// records the event row — one transaction. Human "改好了" only reaches
+// READY_FOR_RETEST; RESOLVED additionally requires retest evidence (B11
 // verify: 人工点击不直接产生 RESOLVED). ACCEPTED_RISK requires a reason and
 // is never equivalent to PASS (ADR-0002).
-func (d *DB) TransitionFixTask(ctx context.Context, actor auth.Actor, findingID uuid.UUID, to, reason, requestID string) (FixTask, error) {
+func (d *DB) TransitionFixTask(ctx context.Context, actor auth.Actor, findingID uuid.UUID, to, reason, requestID string, expectedVersion int) (FixTask, error) {
 	existing, err := d.EnsureFixTask(ctx, actor, findingID)
 	if err != nil {
 		return FixTask{}, err
@@ -73,6 +80,18 @@ func (d *DB) TransitionFixTask(ctx context.Context, actor auth.Actor, findingID 
 	}
 	if to == "ACCEPTED_RISK" && reason == "" {
 		return FixTask{}, errors.New("ACCEPTED_RISK requires a reason")
+	}
+	if expectedVersion <= 0 {
+		return FixTask{}, errors.New("version is required (optimistic lock)")
+	}
+	if to == "RESOLVED" {
+		ok, err := d.retestPassExists(ctx, actor, findingID)
+		if err != nil {
+			return FixTask{}, err
+		}
+		if !ok {
+			return FixTask{}, ErrResolveWithoutRetest
+		}
 	}
 
 	tx, err := d.Pool.Begin(ctx)
@@ -85,9 +104,12 @@ func (d *DB) TransitionFixTask(ctx context.Context, actor auth.Actor, findingID 
 	err = tx.QueryRow(ctx, `
 		UPDATE fix_tasks SET workflow_status = $3, reason = $4,
 		       version = version + 1, updated_at = now()
-		WHERE id = $1 AND workflow_status = $2
+		WHERE id = $1 AND workflow_status = $2 AND version = $5
 		RETURNING version
-	`, existing.ID, current, to, reason).Scan(&newVersion)
+	`, existing.ID, current, to, reason, expectedVersion).Scan(&newVersion)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return FixTask{}, fmt.Errorf("%w: version %d does not match current task", ErrJobConflict, expectedVersion)
+	}
 	if err != nil {
 		return FixTask{}, err
 	}
@@ -107,4 +129,24 @@ func (d *DB) TransitionFixTask(ctx context.Context, actor auth.Actor, findingID 
 	existing.WorkflowStatus = to
 	existing.Version = newVersion
 	return existing, nil
+}
+
+// retestPassExists reports whether any child retest run of this finding's run
+// carries a human-confirmed PASS for the same rule key (state-machines.md §4:
+// 复测经人审后才更新本轴；缺席 ≠ PASS).
+func (d *DB) retestPassExists(ctx context.Context, actor auth.Actor, findingID uuid.UUID) (bool, error) {
+	var ok bool
+	err := d.Pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM findings f
+			JOIN audit_runs child ON child.parent_run_id = f.audit_run_id
+			JOIN findings nf ON nf.audit_run_id = child.id AND nf.rule_id = f.rule_id
+			WHERE f.id = $1 AND f.organization_id = $2
+			  AND child.status = 'COMPLETED'
+			  AND COALESCE(nf.effective_status, nf.assessment_status) = 'PASS'
+			  AND nf.review_status IN ('CONFIRMED','EDITED')
+		)
+	`, findingID, actor.OrganizationID).Scan(&ok)
+	return ok, err
 }

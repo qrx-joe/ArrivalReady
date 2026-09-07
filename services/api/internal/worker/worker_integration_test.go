@@ -36,8 +36,10 @@ func env(t *testing.T) (*store.DB, auth.Actor, string) {
 	// The jobs queue is system-global (workers have no org scope), so stale
 	// jobs from earlier runs of the suite would be claimed by whichever test
 	// gets there first. Every test starts from a clean queue; the throwaway
-	// test DB makes this delete safe.
+	// test DB makes this delete safe. Reviews and fix tasks reference
+	// findings (0006), so they go first.
 	for _, stmt := range []string{
+		`DELETE FROM fix_task_events`, `DELETE FROM fix_tasks`, `DELETE FROM reviews`,
 		`DELETE FROM finding_evidence`, `DELETE FROM findings`,
 		`DELETE FROM jobs`, `DELETE FROM audit_runs`,
 	} {

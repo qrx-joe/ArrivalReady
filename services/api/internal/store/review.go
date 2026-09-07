@@ -54,11 +54,27 @@ func (d *DB) SubmitReview(ctx context.Context, actor auth.Actor, findingID uuid.
 		effective = assessment
 		reviewStatus = "CONFIRMED"
 	case "reject":
+		if in.Note == "" {
+			return nil, errors.New("reject requires a note (state-machines.md §3)")
+		}
 		effective = "UNKNOWN"
 		reviewStatus = "REJECTED"
 	case "edit":
 		if in.NewStatus == "" {
 			return nil, errors.New("edit requires a new status")
+		}
+		// Same invariants as the dedicated paths: the edited status is a
+		// real assessment value, and NA keeps its reason requirement —
+		// editing around the check must not shrink the scoring denominator
+		// silently (ADR-0002 §2.5).
+		switch in.NewStatus {
+		case "PASS", "WARN", "FAIL", "UNKNOWN":
+		case "NA":
+			if in.NAReason == "" {
+				return nil, errors.New("na requires a reason")
+			}
+		default:
+			return nil, errors.New("invalid edited status " + in.NewStatus)
 		}
 		effective = in.NewStatus
 		reviewStatus = "EDITED"

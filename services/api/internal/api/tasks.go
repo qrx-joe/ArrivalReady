@@ -32,10 +32,13 @@ func (s *Server) updateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task, err := s.DB.TransitionFixTask(r.Context(), actor, findingID,
-		in.WorkflowStatus, in.Reason, middleware.GetReqID(r.Context()))
+		in.WorkflowStatus, in.Reason, middleware.GetReqID(r.Context()), in.Version)
 	switch {
 	case errors.Is(err, store.ErrIllegalTransition):
 		writeProblem(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	case errors.Is(err, store.ErrResolveWithoutRetest):
+		writeProblem(w, http.StatusConflict, err.Error())
 		return
 	case errors.Is(err, store.ErrNotFound):
 		writeProblem(w, http.StatusNotFound, "finding not found")
