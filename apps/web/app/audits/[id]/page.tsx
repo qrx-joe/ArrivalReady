@@ -148,9 +148,7 @@ export default function AuditPage() {
       {run.status === "FAILED" && (
         <div className="alert danger" role="alert" style={{ marginBottom: "var(--s4)" }}>
           <span>!</span>
-          <span>
-            审计失败：{run.status_reason ?? "未知原因"}（原始证据已保留，可重新启动审计）
-          </span>
+          <span>审计失败：{run.status_reason ?? "未知原因"}（原始证据已保留，可重新启动审计）</span>
         </div>
       )}
       {!TERMINAL.has(run.status) && (
@@ -218,9 +216,7 @@ export default function AuditPage() {
                 {report.blocking.length > 0 && (
                   <div className="alert danger" style={{ marginTop: "var(--s3)" }}>
                     <span>!</span>
-                    <span>
-                      阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}
-                    </span>
+                    <span>阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}</span>
                   </div>
                 )}
               </div>
@@ -330,9 +326,7 @@ export default function AuditPage() {
                       {f.observation ? `观察：${f.observation}` : "—"} · 置信度 {f.confidence}
                     </span>
                   </span>
-                  <span
-                    className={`status-chip ${FINDING_TONE[f.assessment_status] ?? "unknown"}`}
-                  >
+                  <span className={`status-chip ${FINDING_TONE[f.assessment_status] ?? "unknown"}`}>
                     {f.assessment_status}
                   </span>
                   <span
