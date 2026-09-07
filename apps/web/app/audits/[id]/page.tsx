@@ -4,12 +4,15 @@
  * Audit detail: polls run status while it is non-terminal (stops on terminal
  * or unmount — 执行方案 B09 步骤②) and lists candidate findings with their
  * human-review state. AI candidates are labelled 待人审 until reviewed.
+ * Retest/diff (B12): a retest creates a NEW immutable run; diff compares
+ * rule statuses against the parent and flags non-comparable cases.
  */
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AppShell } from "@/components/layout/AppShell";
 import { ApiError, api, FindingSummary, getToken } from "@/lib/api";
 
 type ScoreReport = {
@@ -31,12 +34,28 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: "已取消",
 };
 
-const FINDING_STYLE: Record<string, string> = {
-  FAIL: "bg-red-50 text-red-700 border-red-200",
-  WARN: "bg-amber-50 text-amber-700 border-amber-200",
-  PASS: "bg-green-50 text-green-700 border-green-200",
-  UNKNOWN: "bg-gray-50 text-gray-600 border-gray-200",
+const RUN_BADGE: Record<string, string> = {
+  QUEUED: "brand",
+  INGESTING: "brand",
+  ANALYZING: "brand",
+  REVIEW_REQUIRED: "warning",
+  COMPLETED: "success",
+  FAILED: "danger",
+  CANCELLED: "neutral",
 };
+
+const FINDING_TONE: Record<string, string> = {
+  FAIL: "fail",
+  WARN: "warn",
+  PASS: "pass",
+  UNKNOWN: "unknown",
+};
+
+function dimensionLevel(score: number): string {
+  if (score < 50) return "level-fail";
+  if (score < 70) return "level-warn";
+  return "";
+}
 
 export default function AuditPage() {
   const params = useParams<{ id: string }>();
@@ -81,163 +100,253 @@ export default function AuditPage() {
 
   if (error) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <p className="rounded bg-red-50 p-3 text-red-700">{error}</p>
-      </main>
+      <AppShell crumb="验收运行">
+        <div className="alert danger" role="alert">
+          <span>!</span>
+          <span>{error}</span>
+        </div>
+      </AppShell>
     );
   }
   if (!run) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <p className="text-gray-500">加载中…</p>
-      </main>
+      <AppShell crumb="验收运行">
+        <div aria-busy="true" style={{ width: "min(680px, 100%)" }}>
+          <div className="skeleton" style={{ width: "38%" }} />
+          <div className="skeleton" />
+          <div className="skeleton" style={{ width: "64%" }} />
+          <div className="skeleton" style={{ width: "52%" }} />
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-1 text-2xl font-semibold">审计 {STATUS_LABEL[run.status] ?? run.status}</h1>
-      <p className="mb-6 text-xs text-gray-400">
-        标准 {run.standard.code} {run.standard.version} ·{" "}
-        {new Date(run.created_at).toLocaleString()}
-      </p>
+    <AppShell
+      crumb={
+        <>
+          验收运行 / <b>{run.id.slice(0, 8)}…</b>
+        </>
+      }
+      actions={
+        <span className={`badge ${RUN_BADGE[run.status] ?? "neutral"}`}>
+          {STATUS_LABEL[run.status] ?? run.status}
+        </span>
+      }
+    >
+      <div className="app-heading">
+        <div>
+          <h1>审计 {STATUS_LABEL[run.status] ?? run.status}</h1>
+          <p>
+            标准 {run.standard.code} {run.standard.version} ·{" "}
+            {new Date(run.created_at).toLocaleString()}
+            {run.parent_run_id && " · 复测运行"}
+          </p>
+        </div>
+      </div>
 
       {run.status === "FAILED" && (
-        <p className="mb-4 rounded bg-red-50 p-3 text-red-700">
-          审计失败：{run.status_reason ?? "未知原因"}（原始证据已保留，可重新启动审计）
-        </p>
+        <div className="alert danger" role="alert" style={{ marginBottom: "var(--s4)" }}>
+          <span>!</span>
+          <span>
+            审计失败：{run.status_reason ?? "未知原因"}（原始证据已保留，可重新启动审计）
+          </span>
+        </div>
       )}
       {!TERMINAL.has(run.status) && (
-        <p className="mb-4 rounded bg-blue-50 p-3 text-blue-700">AI 分析进行中，页面自动刷新…</p>
+        <div className="alert info" style={{ marginBottom: "var(--s4)" }}>
+          <span>i</span>
+          <span>AI 分析进行中，页面自动刷新…</span>
+        </div>
       )}
+
       {run.status === "REVIEW_REQUIRED" && (
-        <section className="mb-6 rounded border p-4">
-          <h2 className="mb-2 font-medium">报告</h2>
-          <button
-            className="rounded bg-black px-4 py-2 font-medium text-white"
-            onClick={async () => {
-              try {
-                const r = await api.finalizeAudit(run.id);
-                setReport(r);
-              } catch (e) {
-                setError(e instanceof ApiError ? e.message : "finalize 失败");
-              }
-            }}
-          >
-            生成报告（冻结评分）
-          </button>
-          {report && (
-            <div className="mt-3 text-sm">
-              <p className="font-semibold">
-                总分：
-                {report.total_score === null
-                  ? "部分评估（未出总分）"
-                  : `${report.total_score} / 100`}
-                <span className="ml-2 text-gray-500">覆盖率 {report.coverage_pct}%</span>
-              </p>
-              <ul className="mt-2 space-y-1">
-                {report.dimensions.map((d) => (
-                  <li key={d.dimension}>
-                    {d.dimension}: {d.score}
-                  </li>
-                ))}
-              </ul>
-              {report.blocking.length > 0 && (
-                <p className="mt-2 text-red-700">
-                  阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}
-                </p>
-              )}
-            </div>
-          )}
+        <section className="panel" style={{ marginBottom: "var(--s5)" }}>
+          <div className="panel-head">
+            <h2>报告</h2>
+            <span>确定性评分，基于已确认 Rule Status</span>
+          </div>
+          <div className="panel-body">
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                try {
+                  const r = await api.finalizeAudit(run.id);
+                  setReport(r);
+                } catch (e) {
+                  setError(e instanceof ApiError ? e.message : "finalize 失败");
+                }
+              }}
+            >
+              生成报告（冻结评分）
+            </button>
+            {report && (
+              <div style={{ marginTop: "var(--s4)" }}>
+                <div className="score-block">
+                  <div
+                    className="score-ring"
+                    style={{ "--score": report.total_score ?? 0 } as React.CSSProperties}
+                  >
+                    <div className="score-value">
+                      <strong>{report.total_score ?? "—"}</strong>
+                      <span>{report.total_score === null ? "Partial" : "Ready"}</span>
+                    </div>
+                  </div>
+                  <div className="score-copy">
+                    <h3>
+                      {report.total_score === null
+                        ? "部分评估（未出总分）"
+                        : `总分 ${report.total_score} / 100`}
+                    </h3>
+                    <p>覆盖率 {report.coverage_pct}% · 分数由 Go 侧按标准版本确定性计算</p>
+                  </div>
+                </div>
+                <div className="dimension-list" style={{ marginTop: "var(--s3)" }}>
+                  {report.dimensions.map((d) => (
+                    <div className="dimension" key={d.dimension}>
+                      <span className="dimension-name">{d.dimension}</span>
+                      <div className="bar">
+                        <span
+                          className={dimensionLevel(d.score)}
+                          style={{ width: `${d.score}%` }}
+                        />
+                      </div>
+                      <span className="dimension-score">{d.score}</span>
+                    </div>
+                  ))}
+                </div>
+                {report.blocking.length > 0 && (
+                  <div className="alert danger" style={{ marginTop: "var(--s3)" }}>
+                    <span>!</span>
+                    <span>
+                      阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </section>
       )}
 
       {run.status === "COMPLETED" && (
-        <section className="mb-6 rounded border p-4">
-          <h2 className="mb-2 font-medium">复测（Before / After）</h2>
-          <button
-            className="rounded bg-black px-4 py-2 font-medium text-white disabled:opacity-50"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setError(null);
-              try {
-                const child = await api.retest(run.id);
-                router.push(`/audits/${child.id}`);
-              } catch (e) {
-                setError(e instanceof ApiError ? e.message : "复测创建失败");
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {busy ? "创建中…" : "创建复测（沿用本轮证据）"}
-          </button>
-          {run.parent_run_id && !diff && (
-            <button
-              className="ml-2 rounded border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  setDiff(await api.getDiff(run.id));
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              与上一轮对比
-            </button>
-          )}
-          {diff && (
-            <table className="mt-3 w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500">
-                  <th className="py-1">规则</th>
-                  <th className="py-1">上一轮</th>
-                  <th className="py-1">本轮</th>
-                </tr>
-              </thead>
-              <tbody>
-                {diff.entries.map((e) => (
-                  <tr key={e.rule_id} className="border-t">
-                    <td className="py-1">{e.rule_id}</td>
-                    <td className="py-1">{e.parent || "—"}</td>
-                    <td className="py-1">{e.child || "未评估"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <section className="panel" style={{ marginBottom: "var(--s5)" }}>
+          <div className="panel-head">
+            <h2>复测（Before / After）</h2>
+            <span>Retest 是新的不可变 run，旧报告保留</span>
+          </div>
+          <div className="panel-body">
+            <div className="row">
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const child = await api.retest(run.id);
+                    router.push(`/audits/${child.id}`);
+                  } catch (e) {
+                    setError(e instanceof ApiError ? e.message : "复测创建失败");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {busy ? "创建中…" : "创建复测（沿用本轮证据）"}
+              </button>
+              {run.parent_run_id && !diff && (
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      setDiff(await api.getDiff(run.id));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  与上一轮对比
+                </button>
+              )}
+            </div>
+            {diff && (
+              <div style={{ marginTop: "var(--s3)" }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>规则</th>
+                      <th>上一轮</th>
+                      <th>本轮</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diff.entries.map((e) => (
+                      <tr key={e.rule_id}>
+                        <td className="mono">{e.rule_id}</td>
+                        <td>{e.parent || "—"}</td>
+                        <td>{e.child || "未评估"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {diff.note && (
+                  <p className="input-hint" style={{ marginTop: "var(--s2)" }}>
+                    {diff.note}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </section>
       )}
 
       {TERMINAL.has(run.status) && findings.length === 0 && (
-        <p className="text-gray-500">本次审计没有产出候选结论。</p>
+        <p className="muted">本次审计没有产出候选结论。</p>
       )}
 
-      <ul className="space-y-3">
-        {findings.map((f) => (
-          <li key={f.id}>
-            <Link
-              href={`/findings/${f.id}`}
-              className={`block rounded border p-4 hover:opacity-90 ${FINDING_STYLE[f.assessment_status] ?? ""}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold">
-                  {f.assessment_status} · {f.rule_id}
-                </span>
-                <span className="text-xs">
-                  {f.review_status === "UNREVIEWED" ? "待人审" : `已${f.review_status}`}
-                </span>
-              </div>
-              {f.observation && <p className="mt-1 text-sm">观察：{f.observation}</p>}
-              <p className="mt-1 text-xs opacity-70">置信度 {f.confidence}</p>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </main>
+      {findings.length > 0 && (
+        <>
+          <div className="app-heading" style={{ marginBottom: "var(--s3)" }}>
+            <div>
+              <h1 style={{ fontSize: "var(--text-lg)" }}>候选结论</h1>
+              <p>{findings.length} 条 · AI 候选，待人审确认后才计入报告</p>
+            </div>
+          </div>
+          <ul className="findings">
+            {findings.map((f) => (
+              <li key={f.id}>
+                <Link className="finding-row" href={`/findings/${f.id}`}>
+                  <span
+                    className={`severity-dot ${FINDING_TONE[f.assessment_status] ?? "unknown"}`}
+                  />
+                  <span className="finding-main">
+                    <b>
+                      {f.assessment_status} · {f.rule_id}
+                    </b>
+                    <span>
+                      {f.observation ? `观察：${f.observation}` : "—"} · 置信度 {f.confidence}
+                    </span>
+                  </span>
+                  <span
+                    className={`status-chip ${FINDING_TONE[f.assessment_status] ?? "unknown"}`}
+                  >
+                    {f.assessment_status}
+                  </span>
+                  <span
+                    className={`badge ${f.review_status === "UNREVIEWED" ? "warning" : "success"}`}
+                  >
+                    {f.review_status === "UNREVIEWED" ? "待人审" : `已${f.review_status}`}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </AppShell>
   );
 }
 
