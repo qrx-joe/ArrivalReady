@@ -2,9 +2,9 @@ package worker
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -73,11 +73,15 @@ func BuildAuditPayload(db *store.DB, objectStore storage.Store, rulesPath string
 				"processing_status": e.ProcessingStatus,
 				"captured_at":       e.CapturedAt,
 			}
-			// B08 contract amendment: vision models read images via a
-			// short-lived presigned GET; storage credentials never leave Go.
+			// B08 decision: evidence content is inlined as a base64 data URL.
+			// Presigned URLs were tried first, but cloud models cannot reach
+			// loopback/dev storage, and data URLs work for both local and
+			// production storage through the same code path. MVP images are
+			// capped at 10 MiB, so the ~33% base64 overhead is acceptable.
 			if objectStore != nil && e.ObjectKey != "" && (e.Type == "image" || e.Type == "pdf") {
-				if url, err := objectStore.PresignGet(ctx, e.ObjectKey, 15*time.Minute); err == nil {
-					item["content_url"] = url
+				if content, err := objectStore.Read(ctx, e.ObjectKey, 12<<20); err == nil {
+					item["content_url"] = fmt.Sprintf("data:%s;base64,%s",
+						e.MimeType, base64.StdEncoding.EncodeToString(content))
 				}
 			}
 			evidence = append(evidence, item)

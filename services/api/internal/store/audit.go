@@ -27,30 +27,32 @@ import (
 
 var ErrJobConflict = errors.New("job attempt no longer valid")
 
+const defaultLease = 3 * time.Minute
+
 type AuditRun struct {
-	ID                   uuid.UUID
-	ProjectID            uuid.UUID
-	OrganizationID       uuid.UUID
-	ParentRunID          *uuid.UUID
-	Status               string
-	StatusReason         string
-	StandardCode         string
-	StandardVersion      string
-	RulesSHA256          string
-	EvidenceManifestJSON json.RawMessage
-	CreatedBy            uuid.UUID
-	CreatedAt            time.Time
-	CompletedAt          *time.Time
+	ID                   uuid.UUID       `json:"id"`
+	ProjectID            uuid.UUID       `json:"project_id"`
+	OrganizationID       uuid.UUID       `json:"organization_id"`
+	ParentRunID          *uuid.UUID      `json:"parent_run_id"`
+	Status               string          `json:"status"`
+	StatusReason         string          `json:"status_reason"`
+	StandardCode         string          `json:"standard_code"`
+	StandardVersion      string          `json:"standard_version"`
+	RulesSHA256          string          `json:"rules_sha256"`
+	EvidenceManifestJSON json.RawMessage `json:"evidence_manifest"`
+	CreatedBy            uuid.UUID       `json:"created_by"`
+	CreatedAt            time.Time       `json:"created_at"`
+	CompletedAt          *time.Time      `json:"completed_at"`
 }
 
 type Job struct {
-	ID           uuid.UUID
-	RunID        uuid.UUID
-	Status       string
-	Attempts     int
-	MaxAttempts  int
-	AttemptToken *uuid.UUID
-	LeaseUntil   *time.Time
+	ID           uuid.UUID  `json:"id"`
+	RunID        uuid.UUID  `json:"run_id"`
+	Status       string     `json:"status"`
+	Attempts     int        `json:"attempts"`
+	MaxAttempts  int        `json:"max_attempts"`
+	AttemptToken *uuid.UUID `json:"attempt_token"`
+	LeaseUntil   *time.Time `json:"lease_until"`
 }
 
 type ManifestEntry struct {
@@ -151,7 +153,7 @@ func (d *DB) ListRuns(ctx context.Context, actor auth.Actor, projectID uuid.UUID
 		return nil, err
 	}
 	defer rows.Close()
-	var out []AuditRun
+	out := []AuditRun{}
 	for rows.Next() {
 		r, err := scanRun(rows)
 		if err != nil {
@@ -174,23 +176,56 @@ func (d *DB) GetRunInternal(ctx context.Context, runID uuid.UUID) (AuditRun, err
 	return r, err
 }
 
+// GetFindingJSON returns one finding (org-scoped) shaped like the list rows,
+// with its evidence refs and locators inline for the Evidence Viewer.
+func (d *DB) GetFindingJSON(ctx context.Context, actor auth.Actor, findingID uuid.UUID) (json.RawMessage, error) {
+	var raw json.RawMessage
+	err := d.Pool.QueryRow(ctx, `
+		SELECT json_build_object(
+			'id', f.id, 'rule_id', f.rule_id, 'assessment_status', f.assessment_status,
+			'severity', f.severity, 'title', f.title, 'observation', f.observation,
+			'reason', f.reason, 'recommended_fix', f.recommended_fix,
+			'confidence', f.confidence, 'review_status', f.review_status,
+			'original_candidate', f.original_candidate,
+			'evidence_refs', COALESCE((
+				SELECT json_agg(json_build_object(
+					'evidence_id', fe.evidence_id,
+					'locator', fe.locator))
+				FROM finding_evidence fe WHERE fe.finding_id = f.id
+			), '[]'::json))
+		FROM findings f
+		WHERE f.id = $1 AND f.organization_id = $2
+	`, findingID, actor.OrganizationID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return raw, err
+}
+
 // ListFindings returns candidate findings of a run as JSON rows (org-scoped).
 func (d *DB) ListFindings(ctx context.Context, actor auth.Actor, runID uuid.UUID) ([]json.RawMessage, error) {
 	rows, err := d.Pool.Query(ctx, `
 		SELECT json_build_object(
-			'id', id, 'rule_id', rule_id, 'assessment_status', assessment_status,
-			'severity', severity, 'title', title, 'observation', observation,
-			'reason', reason, 'recommended_fix', recommended_fix,
-			'confidence', confidence, 'review_status', review_status)
-		FROM findings
-		WHERE audit_run_id = $1 AND organization_id = $2
-		ORDER BY created_at
+			'id', f.id, 'rule_id', f.rule_id, 'assessment_status', f.assessment_status,
+			'severity', f.severity, 'title', f.title, 'observation', f.observation,
+			'reason', f.reason, 'recommended_fix', f.recommended_fix,
+			'confidence', f.confidence, 'review_status', f.review_status,
+			'original_candidate', f.original_candidate,
+			'evidence_refs', COALESCE((
+				SELECT json_agg(json_build_object(
+					'evidence_id', fe.evidence_id,
+					'locator', fe.locator))
+				FROM finding_evidence fe WHERE fe.finding_id = f.id
+			), '[]'::json))
+		FROM findings f
+		WHERE f.audit_run_id = $1 AND f.organization_id = $2
+		ORDER BY f.created_at
 	`, runID, actor.OrganizationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []json.RawMessage
+	out := []json.RawMessage{}
 	for rows.Next() {
 		var raw json.RawMessage
 		if err := rows.Scan(&raw); err != nil {
@@ -243,6 +278,12 @@ type ClaimedJob struct {
 // transaction moves the run QUEUED→ANALYZING; a cancelled run disqualifies
 // its job here, before any provider spend.
 func (d *DB) ClaimNextJob(ctx context.Context, lease time.Duration) (*ClaimedJob, error) {
+	// Callers that forget the lease would otherwise mint instantly-expired
+	// leases whose results are ALWAYS discarded by the completion guard —
+	// silently losing every successful assessment (B07 E2E 实测缺陷).
+	if lease <= 0 {
+		lease = defaultLease
+	}
 	tx, err := d.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err

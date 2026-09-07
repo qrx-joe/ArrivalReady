@@ -18,6 +18,10 @@ import (
 
 func (s *Server) createAudit(w http.ResponseWriter, r *http.Request) {
 	actor, _ := auth.ActorFrom(r.Context())
+	if s.Audit == nil {
+		writeProblem(w, http.StatusServiceUnavailable, "audit subsystem not configured (AI_SERVICE_URL empty)")
+		return
+	}
 	projectID, err := uuid.Parse(chi.URLParam(r, "projectID"))
 	if err != nil {
 		writeProblem(w, http.StatusUnprocessableEntity, "invalid project id")
@@ -90,6 +94,10 @@ func (s *Server) createAudit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listAudits(w http.ResponseWriter, r *http.Request) {
 	actor, _ := auth.ActorFrom(r.Context())
+	if s.Audit == nil {
+		writeProblem(w, http.StatusServiceUnavailable, "audit subsystem not configured (AI_SERVICE_URL empty)")
+		return
+	}
 	projectID, err := uuid.Parse(chi.URLParam(r, "projectID"))
 	if err != nil {
 		writeProblem(w, http.StatusUnprocessableEntity, "invalid project id")
@@ -105,6 +113,10 @@ func (s *Server) listAudits(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getAudit(w http.ResponseWriter, r *http.Request) {
 	actor, _ := auth.ActorFrom(r.Context())
+	if s.Audit == nil {
+		writeProblem(w, http.StatusServiceUnavailable, "audit subsystem not configured (AI_SERVICE_URL empty)")
+		return
+	}
 	id, err := uuid.Parse(chi.URLParam(r, "auditID"))
 	if err != nil {
 		writeProblem(w, http.StatusUnprocessableEntity, "invalid audit id")
@@ -127,6 +139,10 @@ func (s *Server) getAudit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) cancelAudit(w http.ResponseWriter, r *http.Request) {
 	actor, _ := auth.ActorFrom(r.Context())
+	if s.Audit == nil {
+		writeProblem(w, http.StatusServiceUnavailable, "audit subsystem not configured (AI_SERVICE_URL empty)")
+		return
+	}
 	id, err := uuid.Parse(chi.URLParam(r, "auditID"))
 	if err != nil {
 		writeProblem(w, http.StatusUnprocessableEntity, "invalid audit id")

@@ -49,7 +49,7 @@
     "content_url": {
       "type": "string",
       "format": "uri",
-      "description": "Short-lived presigned GET URL injected by the Go worker at job-build time (B08 contract amendment). Vision models read evidence through it; storage credentials never leave Go. Never persisted."
+      "description": "Evidence content injected by the Go worker at job-build time (B08): either a base64 data URL (data:<mime>;base64,..., chosen so cloud providers can read loopback/dev storage too) or a short-lived presigned GET URL. Storage credentials never leave Go. Never persisted."
     },
     "metadata": { "type": "object", "additionalProperties": true }
   },

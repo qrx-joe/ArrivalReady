@@ -94,17 +94,17 @@ func orgIDText(id uuid.UUID) string {
 // ---- projects ----
 
 type Project struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Name           string
-	EntityType     string
-	TargetLocale   string
-	ScopeNote      string
-	Status         string
-	Version        int
-	CreatedBy      uuid.UUID
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID             uuid.UUID `json:"id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+	Name           string    `json:"name"`
+	EntityType     string    `json:"entity_type"`
+	TargetLocale   string    `json:"target_locale"`
+	ScopeNote      string    `json:"scope_note"`
+	Status         string    `json:"status"`
+	Version        int       `json:"version"`
+	CreatedBy      uuid.UUID `json:"created_by"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type CreateProjectInput struct {
@@ -152,7 +152,7 @@ func (d *DB) ListProjects(ctx context.Context, actor auth.Actor) ([]Project, err
 	}
 	defer rows.Close()
 
-	var out []Project
+	out := []Project{}
 	for rows.Next() {
 		var p Project
 		if err := rows.Scan(&p.ID, &p.OrganizationID, &p.Name, &p.EntityType, &p.TargetLocale, &p.ScopeNote, &p.Status, &p.Version, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
