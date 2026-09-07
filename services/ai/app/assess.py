@@ -36,6 +36,7 @@ def build_model() -> tuple[object | None, str]:
             StepFunVisionModel(
                 api_key=settings.model_api_key,
                 base_url=settings.model_base_url,
+                model_id=settings.model_id,
             ),
             "stepfun",
         )
