@@ -25,12 +25,16 @@ def test_healthz_always_ok(monkeypatch) -> None:
 
 
 def test_readyz_reports_missing_model_config(monkeypatch) -> None:
-    monkeypatch.delenv("MODEL_API_KEY", raising=False)
-    monkeypatch.delenv("MODEL_BASE_URL", raising=False)
-    get_settings.cache_clear()
-    resp = _client().get("/readyz")
-    assert resp.status_code == 200  # probe endpoint reachable
-    body = resp.json()
+    # Inject unconfigured settings directly: services/ai/.env may legitimately
+    # hold a real key on dev machines, so env-deletion cannot simulate this.
+    import app.main as main_mod
+    from app.config import Settings
+
+    def unconfigured():
+        return Settings(MODEL_API_KEY=None, MODEL_BASE_URL=None, _env_file=())  # type: ignore[call-arg]
+
+    monkeypatch.setattr(main_mod, "get_settings", unconfigured)
+    body = _client().get("/readyz").json()
     assert body["status"] == "unavailable"
     assert "MODEL_API_KEY" in body["reason"]
 

@@ -23,10 +23,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import httpx  # noqa: E402
+import httpx
 
-from app.config import get_settings  # noqa: E402
-from providers.base import StepFunVisionModel, rules_block  # noqa: E402
+from app.config import get_settings
+from providers.base import StepFunVisionModel
 
 
 async def main(image_path: str) -> int:
@@ -89,13 +89,17 @@ async def main(image_path: str) -> int:
         ensure_ascii=False))
     if response.get("outcome") == "success":
         for a in response.get("assessments", []):
-            print(f"- {a.get('rule_id')}: {a.get('status')} severity={a.get('severity')} "
-                  f"confidence={a.get('confidence')} refs={[r.get('evidence_id') for r in a.get('evidence_refs', [])]}")
+            refs = [r.get("evidence_id") for r in a.get("evidence_refs", [])]
+            print(f"- {a.get('rule_id')}: {a.get('status')} "
+                  f"severity={a.get('severity')} confidence={a.get('confidence')}")
+            print(f"  refs: {refs}")
             print(f"  observation: {a.get('observation', '')[:120]}")
         attempts = response.get("attempts", [])
         if attempts:
-            print(f"usage: {attempts[0].get('usage')} | latency_ms: {attempts[0].get('latency_ms')} | "
-                  f"cost: {attempts[0].get('cost')}")
+            usage = attempts[0].get("usage")
+            latency = attempts[0].get("latency_ms")
+            cost = attempts[0].get("cost")
+            print(f"usage: {usage} | latency_ms: {latency} | cost: {cost}")
         return 0
     print(json.dumps(response.get("error", {}), ensure_ascii=False))
     return 1
