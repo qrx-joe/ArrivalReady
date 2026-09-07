@@ -49,3 +49,6 @@ build/
 *.swp
 .DS_Store
 Thumbs.db
+
+# ===== 冒烟测试产物（不入库）=====
+smoke_menu.jpg
