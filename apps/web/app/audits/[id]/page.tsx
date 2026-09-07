@@ -7,7 +7,7 @@
  */
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ApiError, api, FindingSummary, getToken } from "@/lib/api";
@@ -40,10 +40,16 @@ const FINDING_STYLE: Record<string, string> = {
 
 export default function AuditPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [run, setRun] = useState<AuditPageRun | null>(null);
   const [findings, setFindings] = useState<FindingSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ScoreReport | null>(null);
+  const [diff, setDiff] = useState<{
+    entries: { rule_id: string; parent: string; child: string; comparable: boolean }[];
+    note: string;
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -146,6 +152,66 @@ export default function AuditPage() {
         </section>
       )}
 
+      {run.status === "COMPLETED" && (
+        <section className="mb-6 rounded border p-4">
+          <h2 className="mb-2 font-medium">复测（Before / After）</h2>
+          <button
+            className="rounded bg-black px-4 py-2 font-medium text-white disabled:opacity-50"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                const child = await api.retest(run.id);
+                router.push(`/audits/${child.id}`);
+              } catch (e) {
+                setError(e instanceof ApiError ? e.message : "复测创建失败");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "创建中…" : "创建复测（沿用本轮证据）"}
+          </button>
+          {run.parent_run_id && !diff && (
+            <button
+              className="ml-2 rounded border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  setDiff(await api.getDiff(run.id));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              与上一轮对比
+            </button>
+          )}
+          {diff && (
+            <table className="mt-3 w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500">
+                  <th className="py-1">规则</th>
+                  <th className="py-1">上一轮</th>
+                  <th className="py-1">本轮</th>
+                </tr>
+              </thead>
+              <tbody>
+                {diff.entries.map((e) => (
+                  <tr key={e.rule_id} className="border-t">
+                    <td className="py-1">{e.rule_id}</td>
+                    <td className="py-1">{e.parent || "—"}</td>
+                    <td className="py-1">{e.child || "未评估"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
+
       {TERMINAL.has(run.status) && findings.length === 0 && (
         <p className="text-gray-500">本次审计没有产出候选结论。</p>
       )}
@@ -179,6 +245,7 @@ type AuditPageRun = {
   id: string;
   status: string;
   status_reason: string | null;
+  parent_run_id?: string | null;
   standard: { code: string; version: string };
   created_at: string;
 };

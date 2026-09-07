@@ -166,6 +166,17 @@ export const api = {
         body: JSON.stringify(body),
       },
     ),
+  retest: (auditID: string) =>
+    request<{ id: string }>(`/audits/${auditID}/retest`, {
+      method: "POST",
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+      body: JSON.stringify({}),
+    }),
+  getDiff: (auditID: string) =>
+    request<{
+      entries: { rule_id: string; parent: string; child: string; comparable: boolean }[];
+      note: string;
+    }>(`/audits/${auditID}/diff`),
 
   getEvidence: (evidenceID: string) =>
     request<{

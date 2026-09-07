@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { AppShell } from "@/components/layout/AppShell";
 import { ApiError, api, getToken } from "@/lib/api";
 
 type Project = { id: string; name: string; entity_type: string; created_at: string };
@@ -52,46 +53,66 @@ export default function DashboardPage() {
   }, [name, router]);
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-1 text-2xl font-semibold">验收项目</h1>
-      <p className="mb-6 text-sm text-gray-500">创建项目 → 上传材料 → AI 审计 → 查看带证据的结论</p>
+    <AppShell
+      crumb={
+        <>
+          项目 / <b>全部</b>
+        </>
+      }
+    >
+      <div className="app-heading">
+        <div>
+          <h1>验收项目</h1>
+          <p>创建项目 → 上传材料 → AI 审计 → 查看带证据的结论</p>
+        </div>
+      </div>
 
-      <section className="mb-8 rounded-lg border p-4">
-        <h2 className="mb-3 font-medium">新建项目</h2>
-        <div className="flex flex-col gap-2 sm:flex-row">
+      <section className="card" style={{ marginBottom: "var(--s6)" }}>
+        <h2 className="card-title">新建项目</h2>
+        <p className="card-copy" style={{ marginBottom: "var(--s3)" }}>
+          先建一个门店/场馆档案，后续所有证据、审计与整改都挂在它下面。
+        </p>
+        <div className="form-row">
           <input
-            className="flex-1 rounded border px-3 py-2"
+            className="input"
             placeholder="门店名称（如：某某小馆）"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && create()}
           />
-          <button
-            className="rounded bg-black px-4 py-2 font-medium text-white disabled:opacity-50"
-            onClick={create}
-            disabled={creating || !name.trim()}
-          >
+          <button className="btn btn-primary" onClick={create} disabled={creating || !name.trim()}>
             {creating ? "创建中…" : "创建"}
           </button>
         </div>
       </section>
 
-      {error && <p className="mb-4 rounded bg-red-50 p-3 text-red-700">{error}</p>}
-
-      {projects === null && !error && <p className="text-gray-500">加载中…</p>}
-      {projects !== null && projects.length === 0 && (
-        <p className="text-gray-500">还没有项目——从上面的表单创建第一个。</p>
+      {error && (
+        <div className="alert danger" role="alert" style={{ marginBottom: "var(--s4)" }}>
+          <span>!</span>
+          <span>{error}</span>
+        </div>
       )}
-      <ul className="space-y-2">
+
+      {projects === null && !error && (
+        <div aria-busy="true">
+          <div className="skeleton" style={{ width: "72%" }} />
+          <div className="skeleton" />
+          <div className="skeleton" style={{ width: "58%" }} />
+        </div>
+      )}
+      {projects !== null && projects.length === 0 && (
+        <p className="muted">还没有项目——从上面的表单创建第一个。</p>
+      )}
+      <ul className="project-list">
         {projects?.map((p) => (
           <li key={p.id}>
-            <Link className="block rounded border p-3 hover:bg-gray-50" href={`/projects/${p.id}`}>
-              <span className="font-medium">{p.name}</span>
-              <span className="ml-2 text-xs text-gray-400">{p.entity_type}</span>
+            <Link className="project-card" href={`/projects/${p.id}`}>
+              <span className="name">{p.name}</span>
+              <span className="badge neutral">{p.entity_type}</span>
             </Link>
           </li>
         ))}
       </ul>
-    </main>
+    </AppShell>
   );
 }
