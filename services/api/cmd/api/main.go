@@ -26,12 +26,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/api"
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/audit"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/auth"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/config"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/evidence"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/health"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/storage"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/store"
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/worker"
 )
 
 func main() {
@@ -62,6 +64,7 @@ func main() {
 
 	authn := buildAuthenticator(cfg, logger)
 	objectStore := buildObjectStore(cfg, logger)
+	auditSvc, workerSvc := buildAudit(cfg, logger, pool)
 
 	var db *store.DB
 	var evidenceSvc *evidence.Service
@@ -80,7 +83,7 @@ func main() {
 	// object storage uploads cannot validate — 503 with a reason, never a
 	// silent bypass.
 	if authn != nil && db != nil && evidenceSvc != nil {
-		server := &api.Server{DB: db, Evidence: evidenceSvc}
+		server := &api.Server{DB: db, Evidence: evidenceSvc, Audit: auditSvc}
 		r.Group(func(pr chi.Router) {
 			pr.Use(auth.Middleware(authn, db))
 			pr.Mount("/", server.Routes())
@@ -100,6 +103,12 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// The worker starts only with a full stack; a degraded API still serves
+	// liveness/readiness but never half-runs jobs.
+	if workerSvc != nil {
+		go workerSvc.Run(ctx)
+	}
 
 	go func() {
 		logger.Info("api listening", "port", cfg.Port, "env", cfg.Env,
@@ -140,6 +149,28 @@ func buildAuthenticator(cfg config.Config, logger *slog.Logger) auth.Authenticat
 		return auth.NewOIDCAuthenticator(cfg.OIDCIssuer, cfg.OIDCAudience, cfg.OIDCJWKSURL, nil)
 	}
 	return nil
+}
+
+// buildAudit wires the audit service and, when the full stack exists (DB +
+// AI service URL + bound rules file), the background assessment worker.
+func buildAudit(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) (*audit.Service, *worker.Worker) {
+	if cfg.AIServiceURL == "" || pool == nil {
+		logger.Warn("audit subsystem not configured (AI_SERVICE_URL or DATABASE_URL empty)")
+		return nil, nil
+	}
+	rulesPath, err := worker.ResolveStandardsPath(cfg.StandardsRulesPath)
+	if err != nil {
+		logger.Error("standards rules file not found", "error", err)
+		os.Exit(1)
+	}
+	svc := &audit.Service{DB: &store.DB{Pool: pool}, RulesPath: rulesPath}
+	w := &worker.Worker{
+		DB:           svc.DB,
+		AI:           &worker.HTTPAIClient{BaseURL: cfg.AIServiceURL},
+		RulesPath:    rulesPath,
+		BuildPayload: worker.BuildAuditPayload(svc.DB, rulesPath),
+	}
+	return svc, w
 }
 
 // buildObjectStore wires S3-compatible storage. Missing config is a logged
