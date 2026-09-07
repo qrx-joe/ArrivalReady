@@ -569,6 +569,23 @@
   gap: 7px;
 }
 
+/* 列表行：主体整行可点进详情；尾部可挂「快速确认」操作 */
+.finding-item {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.finding-item .finding-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.finding-quick-confirm {
+  align-self: center;
+  flex: none;
+}
+
 .finding-row {
   display: grid;
   grid-template-columns: 7px minmax(0, 1fr) auto auto;
@@ -793,9 +810,22 @@ a.finding-row:hover {
 }
 
 .dimension-score {
-  text-align: right;
+  font-variant-numeric: tabular-nums;
   color: var(--text-3);
   font-family: var(--font-mono);
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* 未评维度：空条 + 「未评」，不用 0 分表达「没有数据」 */
+.bar > span.unevaluated {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-3),
+    var(--surface-3) 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }
 
 /* ---------- Timeline ---------- */

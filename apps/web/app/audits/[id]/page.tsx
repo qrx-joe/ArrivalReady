@@ -13,15 +13,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { ApiError, api, FindingSummary, getToken } from "@/lib/api";
-
-type ScoreReport = {
-  total_score: number | null;
-  partial: boolean;
-  coverage_pct: number;
-  dimensions: { dimension: string; score: number; applicable_weight?: number }[];
-  blocking: { rule_id: string; severity: string }[];
-};
+import { ApiError, api, FindingSummary, getToken, ScoreReport } from "@/lib/api";
 
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const STATUS_LABEL: Record<string, string> = {
@@ -51,10 +43,71 @@ const FINDING_TONE: Record<string, string> = {
   UNKNOWN: "unknown",
 };
 
+const REVIEW_LABEL: Record<string, string> = {
+  CONFIRMED: "已确认",
+  EDITED: "已修订",
+  REJECTED: "已驳回",
+  NA: "不适用",
+};
+
 function dimensionLevel(score: number): string {
   if (score < 50) return "level-fail";
   if (score < 70) return "level-warn";
   return "";
+}
+
+/** Frozen score report (identical render before and after finalize — the
+ * finalized run is immutable, so the completed view must keep showing it). */
+function ScoreCard({ report }: { report: ScoreReport }) {
+  return (
+    <div>
+      <div className="score-block">
+        <div
+          className="score-ring"
+          style={{ "--score": report.total_score ?? 0 } as React.CSSProperties}
+        >
+          <div className="score-value">
+            <strong>{report.total_score ?? "—"}</strong>
+            <span>{report.total_score === null ? "Partial" : "Ready"}</span>
+          </div>
+        </div>
+        <div className="score-copy">
+          <h3>
+            {report.total_score === null
+              ? "部分评估（未出总分）"
+              : `总分 ${report.total_score} / 100`}
+          </h3>
+          <p>覆盖率 {report.coverage_pct}% · 分数由 Go 侧按标准版本确定性计算</p>
+        </div>
+      </div>
+      <div className="dimension-list" style={{ marginTop: "var(--s3)" }}>
+        {report.dimensions.map((d) => {
+          // 全 UNKNOWN/未评的维度没有可算分数——显示「未评」而不是 0，
+          // 避免「看起来像打了零分」的误读（诚实未知不惩罚）。
+          const unevaluated = d.evaluated_weight !== undefined && d.evaluated_weight === 0;
+          return (
+            <div className="dimension" key={d.dimension}>
+              <span className="dimension-name">{d.dimension}</span>
+              <div className="bar">
+                {unevaluated ? (
+                  <span className="unevaluated" />
+                ) : (
+                  <span className={dimensionLevel(d.score)} style={{ width: `${d.score}%` }} />
+                )}
+              </div>
+              <span className="dimension-score">{unevaluated ? "未评" : d.score}</span>
+            </div>
+          );
+        })}
+      </div>
+      {report.blocking.length > 0 && (
+        <div className="alert danger" style={{ marginTop: "var(--s3)" }}>
+          <span>!</span>
+          <span>阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AuditPage() {
@@ -62,7 +115,11 @@ export default function AuditPage() {
   const router = useRouter();
   const [run, setRun] = useState<AuditPageRun | null>(null);
   const [findings, setFindings] = useState<FindingSummary[]>([]);
+  // error = the page cannot render (initial load failed); actionError = an
+  // in-page action failed (finalize/retest/diff/review) — shown inline so a
+  // transient network blip never replaces the whole view mid-demo.
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [report, setReport] = useState<ScoreReport | null>(null);
   const [diff, setDiff] = useState<{
     entries: { rule_id: string; parent: string; child: string; comparable: boolean }[];
@@ -77,18 +134,28 @@ export default function AuditPage() {
     }
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let loaded = false;
 
     const poll = async () => {
       try {
         const data = await api.getAudit(params.id);
         if (cancelled) return;
+        setError(null);
+        loaded = true;
         setRun(data.run);
         setFindings(data.findings ?? []);
         if (!TERMINAL.has(data.run.status)) {
           timer = setTimeout(poll, 2000); // 轮询至终态；离页由 cancelled 停止
         }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : "加载失败");
+      } catch {
+        if (cancelled) return;
+        // First load failure is fatal (likely 404); afterwards keep polling —
+        // one dropped request must not kill a running analysis view.
+        if (!loaded) {
+          setError("加载失败，请刷新重试");
+          return;
+        }
+        timer = setTimeout(poll, 4000);
       }
     };
     poll();
@@ -97,6 +164,16 @@ export default function AuditPage() {
       if (timer) clearTimeout(timer);
     };
   }, [params.id]);
+
+  const confirmFinding = async (id: string) => {
+    setActionError(null);
+    try {
+      const updated = await api.submitReview(id, { decision: "confirm" });
+      setFindings((rows) => rows.map((f) => (f.id === id ? { ...f, ...updated } : f)));
+    } catch (e) {
+      setActionError(e instanceof ApiError ? e.message : "确认失败");
+    }
+  };
 
   if (error) {
     return (
@@ -158,6 +235,13 @@ export default function AuditPage() {
         </div>
       )}
 
+      {actionError && (
+        <div className="alert danger" role="alert" style={{ marginBottom: "var(--s4)" }}>
+          <span>!</span>
+          <span>{actionError}</span>
+        </div>
+      )}
+
       {run.status === "REVIEW_REQUIRED" && (
         <section className="panel" style={{ marginBottom: "var(--s5)" }}>
           <div className="panel-head">
@@ -168,11 +252,12 @@ export default function AuditPage() {
             <button
               className="btn btn-primary"
               onClick={async () => {
+                setActionError(null);
                 try {
                   const r = await api.finalizeAudit(run.id);
                   setReport(r);
                 } catch (e) {
-                  setError(e instanceof ApiError ? e.message : "finalize 失败");
+                  setActionError(e instanceof ApiError ? e.message : "finalize 失败");
                 }
               }}
             >
@@ -180,47 +265,21 @@ export default function AuditPage() {
             </button>
             {report && (
               <div style={{ marginTop: "var(--s4)" }}>
-                <div className="score-block">
-                  <div
-                    className="score-ring"
-                    style={{ "--score": report.total_score ?? 0 } as React.CSSProperties}
-                  >
-                    <div className="score-value">
-                      <strong>{report.total_score ?? "—"}</strong>
-                      <span>{report.total_score === null ? "Partial" : "Ready"}</span>
-                    </div>
-                  </div>
-                  <div className="score-copy">
-                    <h3>
-                      {report.total_score === null
-                        ? "部分评估（未出总分）"
-                        : `总分 ${report.total_score} / 100`}
-                    </h3>
-                    <p>覆盖率 {report.coverage_pct}% · 分数由 Go 侧按标准版本确定性计算</p>
-                  </div>
-                </div>
-                <div className="dimension-list" style={{ marginTop: "var(--s3)" }}>
-                  {report.dimensions.map((d) => (
-                    <div className="dimension" key={d.dimension}>
-                      <span className="dimension-name">{d.dimension}</span>
-                      <div className="bar">
-                        <span
-                          className={dimensionLevel(d.score)}
-                          style={{ width: `${d.score}%` }}
-                        />
-                      </div>
-                      <span className="dimension-score">{d.score}</span>
-                    </div>
-                  ))}
-                </div>
-                {report.blocking.length > 0 && (
-                  <div className="alert danger" style={{ marginTop: "var(--s3)" }}>
-                    <span>!</span>
-                    <span>阻断/关键问题：{report.blocking.map((b) => b.rule_id).join("、")}</span>
-                  </div>
-                )}
+                <ScoreCard report={report} />
               </div>
             )}
+          </div>
+        </section>
+      )}
+
+      {run.status === "COMPLETED" && run.scoring && (
+        <section className="panel" style={{ marginBottom: "var(--s5)" }}>
+          <div className="panel-head">
+            <h2>报告（已冻结）</h2>
+            <span>完成态只读；分数不再变化</span>
+          </div>
+          <div className="panel-body">
+            <ScoreCard report={run.scoring} />
           </div>
         </section>
       )}
@@ -238,12 +297,12 @@ export default function AuditPage() {
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
-                  setError(null);
+                  setActionError(null);
                   try {
                     const child = await api.retest(run.id);
                     router.push(`/audits/${child.id}`);
                   } catch (e) {
-                    setError(e instanceof ApiError ? e.message : "复测创建失败");
+                    setActionError(e instanceof ApiError ? e.message : "复测创建失败");
                   } finally {
                     setBusy(false);
                   }
@@ -257,11 +316,11 @@ export default function AuditPage() {
                   disabled={busy}
                   onClick={async () => {
                     setBusy(true);
-                    setError(null);
+                    setActionError(null);
                     try {
                       setDiff(await api.getDiff(run.id));
                     } catch (e) {
-                      setError(e instanceof ApiError ? e.message : "对比加载失败");
+                      setActionError(e instanceof ApiError ? e.message : "对比加载失败");
                     } finally {
                       setBusy(false);
                     }
@@ -310,13 +369,20 @@ export default function AuditPage() {
         <>
           <div className="app-heading" style={{ marginBottom: "var(--s3)" }}>
             <div>
-              <h1 style={{ fontSize: "var(--text-lg)" }}>候选结论</h1>
-              <p>{findings.length} 条 · AI 候选，待人审确认后才计入报告</p>
+              <h1 style={{ fontSize: "var(--text-lg)" }}>
+                {run.status === "REVIEW_REQUIRED" ? "候选结论" : "结论清单"}
+              </h1>
+              <p>
+                {findings.length} 条 ·{" "}
+                {findings.some((f) => f.review_status === "UNREVIEWED")
+                  ? "AI 候选，待人审确认后才计入报告"
+                  : "全部已人审处置"}
+              </p>
             </div>
           </div>
           <ul className="findings">
             {findings.map((f) => (
-              <li key={f.id}>
+              <li key={f.id} className="finding-item">
                 <Link className="finding-row" href={`/findings/${f.id}`}>
                   <span
                     className={`severity-dot ${FINDING_TONE[f.assessment_status] ?? "unknown"}`}
@@ -335,9 +401,20 @@ export default function AuditPage() {
                   <span
                     className={`badge ${f.review_status === "UNREVIEWED" ? "warning" : "success"}`}
                   >
-                    {f.review_status === "UNREVIEWED" ? "待人审" : `已${f.review_status}`}
+                    {f.review_status === "UNREVIEWED"
+                      ? "待人审"
+                      : (REVIEW_LABEL[f.review_status] ?? f.review_status)}
                   </span>
                 </Link>
+                {f.review_status === "UNREVIEWED" && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm finding-quick-confirm"
+                    onClick={() => confirmFinding(f.id)}
+                  >
+                    确认
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -353,5 +430,6 @@ type AuditPageRun = {
   status_reason: string | null;
   parent_run_id?: string | null;
   standard: { code: string; version: string };
+  scoring: ScoreReport | null;
   created_at: string;
 };

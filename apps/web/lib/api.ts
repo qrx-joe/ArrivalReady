@@ -128,7 +128,9 @@ export const api = {
         id: string;
         status: string;
         status_reason: string | null;
+        parent_run_id?: string | null;
         standard: { code: string; version: string };
+        scoring: ScoreReport | null;
         created_at: string;
       };
       findings: FindingSummary[];
@@ -148,13 +150,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
   finalizeAudit: (auditID: string) =>
-    request<{
-      total_score: number | null;
-      partial: boolean;
-      coverage_pct: number;
-      dimensions: { dimension: string; score: number }[];
-      blocking: { rule_id: string; severity: string }[];
-    }>(`/audits/${auditID}/finalize`, { method: "POST", body: JSON.stringify({}) }),
+    request<ScoreReport>(`/audits/${auditID}/finalize`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
   updateTask: (
     findingID: string,
     body: { workflow_status: string; version: number; reason?: string },
@@ -204,4 +203,17 @@ export type FindingSummary = {
     evidence_id: string;
     locator: { type: string; bbox?: { x: number; y: number; w: number; h: number } };
   }[];
+};
+
+export type ScoreReport = {
+  total_score: number | null;
+  partial: boolean;
+  coverage_pct: number;
+  dimensions: {
+    dimension: string;
+    score: number;
+    evaluated_weight?: number;
+    applicable_weight?: number;
+  }[];
+  blocking: { rule_id: string; severity: string }[];
 };

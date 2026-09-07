@@ -33,6 +33,13 @@ const TASK_CHIP: Record<string, string> = {
   REOPENED: "danger",
 };
 
+const REVIEW_LABEL: Record<string, string> = {
+  CONFIRMED: "已确认",
+  EDITED: "已修订",
+  REJECTED: "已驳回",
+  NA: "不适用",
+};
+
 export default function FindingPage() {
   const params = useParams<{ id: string }>();
   const [finding, setFinding] = useState<FindingSummary | null>(null);
@@ -42,7 +49,12 @@ export default function FindingPage() {
   const [busy, setBusy] = useState(false);
 
   const submitReview = useCallback(
-    async (decision: string, edits?: { assessment_status?: string }, naReason?: string) => {
+    async (
+      decision: string,
+      edits?: { assessment_status?: string },
+      naReason?: string,
+      note?: string,
+    ) => {
       if (!finding) return;
       setBusy(true);
       setReviewError(null);
@@ -51,6 +63,7 @@ export default function FindingPage() {
           decision,
           edits,
           na_reason: naReason,
+          note,
         })) as FindingSummary;
         setFinding(updated);
       } catch (e) {
@@ -61,6 +74,17 @@ export default function FindingPage() {
     },
     [finding],
   );
+
+  const askReject = useCallback(async () => {
+    if (!finding) return;
+    const note = window.prompt("驳回必须写明理由（为什么该候选结论不成立）：");
+    if (note === null) return;
+    if (!note.trim()) {
+      setReviewError("驳回必须填写理由");
+      return;
+    }
+    await submitReview("reject", undefined, undefined, note);
+  }, [finding, submitReview]);
 
   const askNa = useCallback(async () => {
     if (!finding) return;
@@ -165,7 +189,9 @@ export default function FindingPage() {
           {unreviewed ? (
             <span className="badge brand">待人审（AI 候选，非最终结论）</span>
           ) : (
-            <span className="badge success">人审：{finding.review_status}</span>
+            <span className="badge success">
+              人审：{REVIEW_LABEL[finding.review_status] ?? finding.review_status}
+            </span>
           )}
         </div>
 
@@ -187,11 +213,7 @@ export default function FindingPage() {
                 <button className="btn btn-secondary btn-sm" disabled={busy} onClick={askEdit}>
                   修订结论
                 </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  disabled={busy}
-                  onClick={() => submitReview("reject")}
-                >
+                <button className="btn btn-secondary btn-sm" disabled={busy} onClick={askReject}>
                   驳回
                 </button>
                 <button className="btn btn-secondary btn-sm" disabled={busy} onClick={askNa}>
@@ -218,7 +240,10 @@ export default function FindingPage() {
         ) : (
           <div className="alert success" style={{ marginBottom: "var(--s4)" }}>
             <span>✓</span>
-            <span>已处置：{finding.review_status}（处置记录不可覆盖；更正产生新记录）</span>
+            <span>
+              已处置：{REVIEW_LABEL[finding.review_status] ?? finding.review_status}
+              （处置记录不可覆盖；更正产生新记录）
+            </span>
           </div>
         )}
 
@@ -390,7 +415,8 @@ function TaskPanel({ findingId }: TaskPanelProps) {
         )}
         {status === "READY_FOR_RETEST" && (
           <p className="input-hint" style={{ marginTop: "var(--s2)" }}>
-            复测通过后才会置为 RESOLVED（人工点击不直接等于已解决）。
+            置为 RESOLVED 需要复测运行中同一规则有人审确认的
+            PASS——系统会校验，仅点击不产生「已解决」。
           </p>
         )}
       </div>
