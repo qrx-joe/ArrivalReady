@@ -1,6 +1,6 @@
 # IRRS 0.1.0 首批规则（B02 草稿）
 #
-# 状态：整个规则包 status=draft——未经 Product Owner 审定前不得用于生产评分（ADR-0002）。
+# 状态：active（2026-09-07 PO 审定生效，D-019）。发布版本不可原地修改——问题修复出新版本目录。
 # 审定要点：逐条复核 severity_default 与 weight（rationale 是审定依据）、examples 是否符合实际场景。
 # 约束：
 #   - 规则文件按 ADR-0001 唯一存放于 standards/irrs/<semver>/；发布后不可原地修改，只能出新版本目录。
@@ -10,7 +10,7 @@
 standard:
   code: IRRS
   version: 0.1.0
-  status: draft
+  status: active
   created_at: "2026-09-07"
   notes: >
     B02 首批 10 条，覆盖 D1–D7，优先餐饮业态。
@@ -45,7 +45,7 @@ rules:
         detail: 门头挂中文招牌+菜品实拍图，无文字也可识别为餐饮店。
       - outcome: fail
         detail: 招牌仅在建筑侧面且夜间无照明，正门视角无法识别店名。
-    status: draft
+    status: active
 
   - code: IRRS-D2-001
     title: 菜单目标访客语言可达
@@ -75,7 +75,7 @@ rules:
         detail: 提供中英双语菜单，品类与价格完整对应。
       - outcome: fail
         detail: 菜单仅中文且无翻译入口，仅一道菜印有英文单词。
-    status: draft
+    status: active
 
   - code: IRRS-D2-002
     title: 特色菜品文化概念可理解
@@ -104,7 +104,7 @@ rules:
         detail: 招牌菜附英文一句话说明原料与辣度。
       - outcome: fail
         detail: 菜品仅有音译名（如 Mapo Tofu），无任何口感/原料说明。
-    status: draft
+    status: active
 
   - code: IRRS-D3-001
     title: 价格与关键成分信息透明
@@ -135,7 +135,7 @@ rules:
         detail: 菜单标注价格、例/份说明，过敏原以图标列出并有英文图例。
       - outcome: fail
         detail: 价格齐全但辣度/过敏原完全无标注，且目标语言版本缺失。
-    status: draft
+    status: active
 
   - code: IRRS-D4-001
     title: 扫码点单流程语言可达
@@ -164,7 +164,7 @@ rules:
         detail: 扫码进入支持 en/ja 切换的点单页，选品到下单全程可完成。
       - outcome: fail
         detail: 落地页仅中文且无语言切换，需手机号注册才能浏览。
-    status: draft
+    status: active
 
   - code: IRRS-D4-002
     title: 自助流程不可用时的协助降级路径
@@ -195,7 +195,7 @@ rules:
         detail: 柜台提供图片菜单与双语点单卡，访谈确认店员可协助。
       - outcome: fail
         detail: 仅扫码点单且柜台不接受口头点单，无可替代路径。
-    status: draft
+    status: active
 
   - code: IRRS-D5-001
     title: 支付方式明示
@@ -225,7 +225,7 @@ rules:
         detail: 收银台张贴银联/Visa/支付宝/微信标识，含英文 ACCEPTED HERE。
       - outcome: fail
         detail: 全店无任何支付方式标识，支付方式仅能口头询问。
-    status: draft
+    status: active
 
   - code: IRRS-D5-002
     title: 支付路径实际可用（人工确认）
@@ -255,7 +255,7 @@ rules:
         detail: 实测Visa刷卡成功并留存小票，与标识一致。
       - outcome: fail
         detail: 标识Visa可用，实测POS拒绝外卡且无其他国际支付路径。
-    status: draft
+    status: active
 
   - code: IRRS-D6-001
     title: 求助与投诉渠道可见
@@ -284,7 +284,7 @@ rules:
         detail: 桌贴含双语「如需帮助请联系店员」及店长微信二维码。
       - outcome: fail
         detail: 店内无任何求助/投诉指引，仅中文小票含客服电话。
-    status: draft
+    status: active
 
   - code: IRRS-D7-001
     title: 就餐习俗与文化语境提示
@@ -313,4 +313,4 @@ rules:
         detail: 菜单尾页英文说明收取10%服务费、免费茶水与等位规则。
       - outcome: fail
         detail: 外卡访客结账时才被告知现金-only 且无小费/服务费说明。
-    status: draft
+    status: active
