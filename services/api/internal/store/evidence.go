@@ -88,6 +88,20 @@ func (d *DB) GetEvidence(ctx context.Context, actor auth.Actor, evidenceID uuid.
 	return e, err
 }
 
+// GetEvidenceInternal loads a row WITHOUT the organization scope. It exists
+// exclusively for server-side subsystems that already hold the full context
+// (worker payload assembly). HTTP handlers must always use the actor-scoped
+// GetEvidence — an unscoped read reachable from a request path is a BOLA hole.
+func (d *DB) GetEvidenceInternal(ctx context.Context, evidenceID uuid.UUID) (Evidence, error) {
+	row := d.Pool.QueryRow(ctx,
+		`SELECT `+evidenceColumns+` FROM evidence WHERE id = $1`, evidenceID)
+	e, err := scanEvidence(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Evidence{}, ErrNotFound
+	}
+	return e, err
+}
+
 // MarkEvidenceReady flips PENDING_UPLOAD → READY in one guarded UPDATE; the
 // status predicate makes concurrent double-completion safe (one wins).
 func (d *DB) MarkEvidenceReady(ctx context.Context, actor auth.Actor, evidenceID uuid.UUID, shaHex, fingerprint string) (Evidence, error) {

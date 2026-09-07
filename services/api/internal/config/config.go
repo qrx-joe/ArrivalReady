@@ -34,6 +34,9 @@ type Config struct {
 	OIDCAudience string
 	OIDCJWKSURL  string
 
+	// StandardsRulesPath overrides the bound rules.yaml (default: repo layout).
+	StandardsRulesPath string
+
 	// S3-compatible object storage (B06). Local dev: MinIO from compose.
 	S3Endpoint  string // e.g. localhost:9000
 	S3Bucket    string
@@ -81,6 +84,7 @@ func Load() (Config, error) {
 		OIDCIssuer:          os.Getenv("OIDC_ISSUER"),
 		OIDCAudience:        os.Getenv("OIDC_AUDIENCE"),
 		OIDCJWKSURL:         os.Getenv("OIDC_JWKS_URL"),
+		StandardsRulesPath:  os.Getenv("STANDARDS_RULES_PATH"),
 		S3Endpoint:          os.Getenv("S3_ENDPOINT"),
 		S3Bucket:            envOr("S3_BUCKET", "arrivalready-evidence"),
 		S3AccessKey:         os.Getenv("S3_ACCESS_KEY"),

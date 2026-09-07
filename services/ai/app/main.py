@@ -7,9 +7,11 @@ answering a fake 200 — the same probe semantics as the Go API (B04).
 
 from fastapi import FastAPI
 
+from app.assess import router as assess_router
 from app.config import Settings, get_settings
 
 app = FastAPI(title="Arrival Ready AI Service", version="0.1.0")
+app.include_router(assess_router)
 
 
 @app.get("/healthz")

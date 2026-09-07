@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
+	"github.com/qrx-joe/ArrivalReady/services/api/internal/audit"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/auth"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/evidence"
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/store"
@@ -21,6 +22,7 @@ import (
 type Server struct {
 	DB       *store.DB
 	Evidence *evidence.Service
+	Audit    *audit.Service
 }
 
 // Routes builds the protected API. The auth middleware is applied by the
@@ -41,6 +43,12 @@ func (s *Server) Routes() http.Handler {
 
 	r.Get("/evidence/{evidenceID}", s.getEvidence)
 	r.Delete("/evidence/{evidenceID}", s.deleteEvidence)
+
+	// create audit shares the idempotency mandate (TECH_SPEC §11).
+	r.With(requireIdempotencyKey).Post("/projects/{projectID}/audits", s.createAudit)
+	r.Get("/projects/{projectID}/audits", s.listAudits)
+	r.Get("/audits/{auditID}", s.getAudit)
+	r.Post("/audits/{auditID}/cancel", s.cancelAudit)
 
 	return r
 }
