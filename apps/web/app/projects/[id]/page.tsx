@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AppShell } from "@/components/layout/AppShell";
 import { ApiError, api, getToken } from "@/lib/api";
 
 type Evidence = {
@@ -33,6 +34,12 @@ const STATUS_LABEL: Record<string, string> = {
   READY: "就绪",
   QUARANTINED: "已隔离",
   DELETED: "已删除",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  READY: "success",
+  QUARANTINED: "danger",
+  VALIDATING: "warning",
 };
 
 export default function ProjectPage() {
@@ -117,64 +124,108 @@ export default function ProjectPage() {
   }, [params.id, readyIds, router]);
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <Link href="/dashboard" className="text-sm text-gray-500 hover:underline">
-        ← 返回项目列表
-      </Link>
-      <h1 className="my-2 text-2xl font-semibold">{project?.name ?? "…"}</h1>
+    <AppShell
+      crumb={
+        <>
+          项目 / <b>{project?.name ?? "…"}</b>
+        </>
+      }
+    >
+      <div className="app-heading">
+        <div>
+          <h1>{project?.name ?? "…"}</h1>
+          <p>证据库与 AI 验收运行</p>
+        </div>
+      </div>
 
-      {error && <p className="mb-4 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+      {error && (
+        <div className="alert danger" role="alert" style={{ marginBottom: "var(--s4)" }}>
+          <span>!</span>
+          <span>{error}</span>
+        </div>
+      )}
 
-      <section className="mb-8 rounded-lg border p-4">
-        <h2 className="mb-3 font-medium">上传材料图片</h2>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-          className="block w-full text-sm"
-        />
-        {uploading && <p className="mt-2 text-sm text-gray-500">上传并校验中…</p>}
-        <ul className="mt-3 space-y-2">
-          {evidence.map((e) => (
-            <li key={e.id} className="rounded border px-3 py-2 text-sm">
-              <span
-                className={
-                  e.processing_status === "READY"
-                    ? "font-medium text-green-700"
-                    : "font-medium text-red-700"
-                }
-              >
-                {STATUS_LABEL[e.processing_status] ?? e.processing_status}
-              </span>
-              <span className="ml-2 text-gray-400">{e.sha256.slice(0, 12)}…</span>
-            </li>
-          ))}
-          {evidence.length === 0 && <li className="text-sm text-gray-500">还没有上传任何材料。</li>}
-        </ul>
-      </section>
+      <div className="grid-2" style={{ alignItems: "start" }}>
+        <section className="panel">
+          <div className="panel-head">
+            <h2>上传材料图片</h2>
+            <span>门头 / 菜单 / 标识等现场材料</span>
+          </div>
+          <div className="panel-body">
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+              className="file-input"
+            />
+            {uploading && (
+              <p className="muted" style={{ marginTop: "var(--s2)" }}>
+                上传并校验中…
+              </p>
+            )}
+            <ul className="stack" style={{ marginTop: "var(--s3)" }}>
+              {evidence.map((e) => (
+                <li
+                  key={e.id}
+                  className="row"
+                  style={{
+                    justifyContent: "space-between",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r-md)",
+                    padding: "9px 12px",
+                    fontSize: "var(--text-sm)",
+                  }}
+                >
+                  <span className="row">
+                    <span className={`badge ${STATUS_BADGE[e.processing_status] ?? "neutral"}`}>
+                      {STATUS_LABEL[e.processing_status] ?? e.processing_status}
+                    </span>
+                    <span className="mono muted">{e.sha256.slice(0, 12)}…</span>
+                  </span>
+                </li>
+              ))}
+              {evidence.length === 0 && (
+                <li className="muted">还没有上传任何材料。第一张门头或菜单照片即可开始。</li>
+              )}
+            </ul>
+          </div>
+        </section>
 
-      <section className="mb-8 rounded-lg border p-4">
-        <h2 className="mb-3 font-medium">AI 审计</h2>
-        <button
-          className="rounded bg-black px-4 py-2 font-medium text-white disabled:opacity-50"
-          onClick={startAudit}
-          disabled={starting || readyIds.length === 0}
-        >
-          {starting ? "启动中…" : `启动审计（${readyIds.length} 份就绪材料）`}
-        </button>
-        <ul className="mt-3 space-y-2">
-          {audits.map((a) => (
-            <li key={a.id} className="text-sm">
-              <Link className="text-blue-700 hover:underline" href={`/audits/${a.id}`}>
-                审计 {a.id.slice(0, 8)}…
-              </Link>
-              <span className="ml-2">{a.status}</span>
-              <span className="ml-2 text-gray-400">{new Date(a.created_at).toLocaleString()}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+        <section className="panel">
+          <div className="panel-head">
+            <h2>AI 验收</h2>
+            <span>同标准复测才可比较</span>
+          </div>
+          <div className="panel-body">
+            <button
+              className="btn btn-primary"
+              onClick={startAudit}
+              disabled={starting || readyIds.length === 0}
+            >
+              {starting ? "启动中…" : `启动审计（${readyIds.length} 份就绪材料）`}
+            </button>
+            <ul className="stack" style={{ marginTop: "var(--s3)" }}>
+              {audits.map((a) => (
+                <li key={a.id} className="row" style={{ fontSize: "var(--text-sm)" }}>
+                  <Link
+                    className="back-link"
+                    style={{ color: "var(--brand-strong)" }}
+                    href={`/audits/${a.id}`}
+                  >
+                    审计 {a.id.slice(0, 8)}…
+                  </Link>
+                  <span className="badge neutral">{a.status}</span>
+                  <span className="muted">{new Date(a.created_at).toLocaleString()}</span>
+                </li>
+              ))}
+              {audits.length === 0 && (
+                <li className="muted">还没有验收记录——就绪材料后点上面的按钮启动。</li>
+              )}
+            </ul>
+          </div>
+        </section>
+      </div>
+    </AppShell>
   );
 }
