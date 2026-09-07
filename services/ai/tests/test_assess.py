@@ -46,4 +46,6 @@ def test_assess_survives_garbage_input() -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["outcome"] == "failure"
-    assert "unreadable" in body["error"]["message"]
+    # malformed input must still yield a structured envelope; the offline env
+    # reports adapter-unavailability in the same message
+    assert "assessment unavailable" in body["error"]["message"]

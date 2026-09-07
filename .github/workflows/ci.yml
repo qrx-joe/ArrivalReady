@@ -26,6 +26,8 @@ jobs:
         run: |
           python scripts/validate_contracts.py --fixtures contracts/fixtures
           python scripts/validate_contracts.py --openapi contracts/openapi/arrivalready.yaml
+      - name: B08 offline eval fixtures (fake adapter, no provider key)
+        run: python evals/runners/run_b08_fixtures.py
 
   api:
     name: api (go vet/test/build)

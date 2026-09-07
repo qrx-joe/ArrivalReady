@@ -1,0 +1,37 @@
+{
+  "adapter": "fake",
+  "payload": {
+    "job_id": "01912345-6789-7abc-9def-0123456789ad",
+    "run_id": "01912345-6789-7abc-9def-0123456789ae",
+    "attempt_token": "01912345-6789-7abc-9def-0123456789af",
+    "idempotency_key": "run-x/assessment/attempt-1",
+    "project": {
+      "project_id": "01912345-6789-7abc-9def-0123456789ac",
+      "entity_type": "restaurant",
+      "target_locale": "en-US"
+    },
+    "standard": {
+      "code": "IRRS",
+      "version": "0.1.0",
+      "rules_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "prompt_version": "assessment/v1",
+    "budget": {
+      "max_provider_requests": 6,
+      "timeout_ms": 120000
+    },
+    "evidence": [],
+    "applicable_rules": [
+      {
+        "code": "IRRS-D2-001",
+        "dimension": "D2",
+        "description": "菜单语言可达",
+        "review_required": false
+      }
+    ]
+  },
+  "expect": {
+    "outcome": "success",
+    "min_assessments": 1
+  }
+}

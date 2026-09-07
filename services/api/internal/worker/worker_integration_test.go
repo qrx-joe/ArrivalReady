@@ -58,7 +58,7 @@ func newWorker(t *testing.T, db *store.DB, ai AIClient, rulesPath string, lease 
 	t.Helper()
 	return &Worker{
 		DB: db, AI: ai, RulesPath: rulesPath, Lease: lease, Interval: time.Hour,
-		BuildPayload: BuildAuditPayload(db, rulesPath),
+		BuildPayload: BuildAuditPayload(db, nil, rulesPath),
 	}
 }
 
