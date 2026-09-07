@@ -20,9 +20,10 @@ import (
 )
 
 type Server struct {
-	DB       *store.DB
-	Evidence *evidence.Service
-	Audit    *audit.Service
+	DB        *store.DB
+	Evidence  *evidence.Service
+	Audit     *audit.Service
+	RulesPath string // frozen standard file for scoring (B10)
 }
 
 // RegisterRoutes registers the protected API on the caller's router; the
@@ -47,7 +48,12 @@ func (s *Server) RegisterRoutes(r chi.Router) {
 	r.Get("/projects/{projectID}/audits", s.listAudits)
 	r.Get("/audits/{auditID}", s.getAudit)
 	r.Post("/audits/{auditID}/cancel", s.cancelAudit)
+	r.Post("/audits/{auditID}/finalize", s.finalizeAudit)
+	r.Post("/audits/{auditID}/retest", s.retestAudit)
+	r.Get("/audits/{auditID}/diff", s.auditDiff)
 	r.Get("/findings/{findingID}", s.getFinding)
+	r.Post("/findings/{findingID}/reviews", s.submitReview)
+	r.Patch("/findings/{findingID}/task", s.updateTask)
 }
 
 func requireIdempotencyKey(next http.Handler) http.Handler {
