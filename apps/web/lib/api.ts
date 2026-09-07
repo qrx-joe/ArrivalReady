@@ -159,10 +159,13 @@ export const api = {
     findingID: string,
     body: { workflow_status: string; version: number; reason?: string },
   ) =>
-    request<{ workflow_status: string }>(`/findings/${findingID}/task`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
+    request<{ id: string; workflow_status: string; version: number }>(
+      `/findings/${findingID}/task`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      },
+    ),
 
   getEvidence: (evidenceID: string) =>
     request<{

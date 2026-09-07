@@ -148,6 +148,7 @@ export default function FindingPage() {
         </span>
       </div>
 
+      {finding.review_status !== "UNREVIEWED" && <TaskPanel findingId={finding.id} />}
       {finding.review_status !== "UNREVIEWED" ? (
         <p className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
           已处置：{finding.review_status}（处置记录不可覆盖；更正产生新记录）
@@ -243,5 +244,102 @@ export default function FindingPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+type TaskPanelProps = { findingId: string };
+
+const NEXT_TASK: Record<string, { to: string; label: string }[]> = {
+  OPEN: [{ to: "ACKNOWLEDGED", label: "确认整改" }],
+  ACKNOWLEDGED: [{ to: "FIXING", label: "开始整改" }],
+  FIXING: [
+    { to: "READY_FOR_RETEST", label: "已改好，申请复测" },
+    { to: "ACCEPTED_RISK", label: "接受风险" },
+  ],
+  READY_FOR_RETEST: [{ to: "REOPENED", label: "复测未通过，重开" }],
+  REOPENED: [{ to: "FIXING", label: "重新整改" }],
+};
+
+function TaskPanel({ findingId }: TaskPanelProps) {
+  const [status, setStatus] = useState<string | null>(null);
+  const [version, setVersion] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const f = (await api.getFinding(findingId)) as unknown as {
+        task?: { workflow_status: string; version: number };
+      };
+      if (f.task) {
+        setStatus(f.task.workflow_status);
+        setVersion(f.task.version);
+      }
+    } catch {
+      // task may not exist yet; created on first transition
+    }
+  }, [findingId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const move = useCallback(
+    async (to: string, _label?: string) => {
+      setBusy(true);
+      setError(null);
+      let reason = "";
+      if (to === "ACCEPTED_RISK") {
+        reason = window.prompt("接受风险必须填写理由：") ?? "";
+        if (!reason.trim()) {
+          setError("ACCEPTED_RISK 必须填写理由");
+          setBusy(false);
+          return;
+        }
+      }
+      try {
+        const updated = await api.updateTask(findingId, {
+          workflow_status: to,
+          version,
+          reason,
+        });
+        setStatus(updated.workflow_status);
+        setVersion(updated.version);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "迁移失败");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [findingId, version],
+  );
+
+  const actions = status ? (NEXT_TASK[status] ?? []) : [];
+  return (
+    <section className="mb-4 rounded border p-3 text-sm">
+      <p className="mb-2 font-medium">
+        整改任务：{status ?? "未创建"} <span className="text-gray-400">v{version}</span>
+      </p>
+      {error && <p className="mb-2 text-red-700">{error}</p>}
+      {actions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {actions.map((a) => (
+            <button
+              key={a.to}
+              className="rounded border px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => move(a.to, a.label)}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {status === "READY_FOR_RETEST" && (
+        <p className="mt-2 text-xs text-gray-500">
+          复测通过后才会置为 RESOLVED（人工点击不直接等于已解决）。
+        </p>
+      )}
+    </section>
   );
 }
