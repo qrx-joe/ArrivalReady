@@ -127,7 +127,11 @@ func (s *Server) getAudit(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusNotFound, "audit not found")
 		return
 	}
-	findings, _ := s.DB.ListFindings(r.Context(), actor, id)
+	findings, err := s.DB.ListFindings(r.Context(), actor, id)
+	if err != nil {
+		writeProblem(w, http.StatusInternalServerError, "query failed")
+		return
+	}
 	if findings == nil {
 		findings = []json.RawMessage{}
 	}
@@ -166,6 +170,14 @@ func (s *Server) cancelAudit(w http.ResponseWriter, r *http.Request) {
 func runView(r store.AuditRun) map[string]any {
 	var manifest []store.ManifestEntry
 	_ = json.Unmarshal(r.EvidenceManifestJSON, &manifest)
+	// Scoring (frozen at finalize) is echoed verbatim; total_score is lifted
+	// to the top level per the contract's AuditRun schema.
+	var scoring map[string]any
+	_ = json.Unmarshal(r.ScoringJSON, &scoring)
+	var totalScore any
+	if scoring != nil {
+		totalScore = scoring["total_score"] // nil stays nil → JSON null
+	}
 	return map[string]any{
 		"id":                r.ID,
 		"project_id":        r.ProjectID,
@@ -174,6 +186,8 @@ func runView(r store.AuditRun) map[string]any {
 		"status_reason":     r.StatusReason,
 		"standard":          map[string]string{"code": r.StandardCode, "version": r.StandardVersion, "rules_sha256": r.RulesSHA256},
 		"evidence_manifest": manifest,
+		"scoring":           scoring,
+		"total_score":       totalScore,
 		"created_at":        r.CreatedAt,
 		"completed_at":      r.CompletedAt,
 	}

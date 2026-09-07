@@ -40,9 +40,12 @@ type AuditRun struct {
 	StandardVersion      string          `json:"standard_version"`
 	RulesSHA256          string          `json:"rules_sha256"`
 	EvidenceManifestJSON json.RawMessage `json:"evidence_manifest"`
-	CreatedBy            uuid.UUID       `json:"created_by"`
-	CreatedAt            time.Time       `json:"created_at"`
-	CompletedAt          *time.Time      `json:"completed_at"`
+	// ScoringJSON is the report frozen by finalize (nil before finalize);
+	// the run is read-only afterwards, so it can be returned as-is.
+	ScoringJSON json.RawMessage `json:"scoring"`
+	CreatedBy   uuid.UUID       `json:"created_by"`
+	CreatedAt   time.Time       `json:"created_at"`
+	CompletedAt *time.Time      `json:"completed_at"`
 }
 
 type Job struct {
@@ -123,13 +126,13 @@ func (d *DB) CreateAuditWithJob(ctx context.Context, actor auth.Actor, projectID
 
 const runColumns = `id, project_id, organization_id, parent_run_id, status,
 	COALESCE(status_reason,''), standard_code, standard_version, rules_sha256,
-	evidence_manifest, created_by, created_at, completed_at`
+	evidence_manifest, scoring, created_by, created_at, completed_at`
 
 func scanRun(row pgx.Row) (AuditRun, error) {
 	var r AuditRun
 	err := row.Scan(&r.ID, &r.ProjectID, &r.OrganizationID, &r.ParentRunID, &r.Status,
 		&r.StatusReason, &r.StandardCode, &r.StandardVersion, &r.RulesSHA256,
-		&r.EvidenceManifestJSON, &r.CreatedBy, &r.CreatedAt, &r.CompletedAt)
+		&r.EvidenceManifestJSON, &r.ScoringJSON, &r.CreatedBy, &r.CreatedAt, &r.CompletedAt)
 	return r, err
 }
 
@@ -176,17 +179,34 @@ func (d *DB) GetRunInternal(ctx context.Context, runID uuid.UUID) (AuditRun, err
 	return r, err
 }
 
+// findingTaskJSON is the fix-task block for finding rows. Tasks are created
+// lazily on first transition (EnsureFixTask), so before that the reader gets
+// the effective OPEN/v1 view with a null id — the shape the UI and contract
+// both expect without forcing a write on GET.
+const findingTaskJSON = `'task', COALESCE((
+				SELECT json_build_object(
+					'id', t.id, 'finding_id', t.finding_id,
+					'workflow_status', t.workflow_status, 'version', t.version,
+					'created_at', t.created_at)
+				FROM fix_tasks t WHERE t.finding_id = f.id
+			), json_build_object(
+				'id', NULL, 'finding_id', f.id,
+				'workflow_status', 'OPEN', 'version', 1,
+				'created_at', f.created_at))`
+
 // GetFindingJSON returns one finding (org-scoped) shaped like the list rows,
 // with its evidence refs and locators inline for the Evidence Viewer.
 func (d *DB) GetFindingJSON(ctx context.Context, actor auth.Actor, findingID uuid.UUID) (json.RawMessage, error) {
 	var raw json.RawMessage
 	err := d.Pool.QueryRow(ctx, `
 		SELECT json_build_object(
-			'id', f.id, 'rule_id', f.rule_id, 'assessment_status', f.assessment_status,
+			'id', f.id, 'audit_run_id', f.audit_run_id,
+			'rule_id', f.rule_id, 'assessment_status', f.assessment_status,
 			'severity', f.severity, 'title', f.title, 'observation', f.observation,
 			'reason', f.reason, 'recommended_fix', f.recommended_fix,
 			'confidence', f.confidence, 'review_status', f.review_status,
-			'original_candidate', f.original_candidate,
+			'created_at', f.created_at, 'original_candidate', f.original_candidate,
+			`+findingTaskJSON+`,
 			'evidence_refs', COALESCE((
 				SELECT json_agg(json_build_object(
 					'evidence_id', fe.evidence_id,
@@ -206,11 +226,13 @@ func (d *DB) GetFindingJSON(ctx context.Context, actor auth.Actor, findingID uui
 func (d *DB) ListFindings(ctx context.Context, actor auth.Actor, runID uuid.UUID) ([]json.RawMessage, error) {
 	rows, err := d.Pool.Query(ctx, `
 		SELECT json_build_object(
-			'id', f.id, 'rule_id', f.rule_id, 'assessment_status', f.assessment_status,
+			'id', f.id, 'audit_run_id', f.audit_run_id,
+			'rule_id', f.rule_id, 'assessment_status', f.assessment_status,
 			'severity', f.severity, 'title', f.title, 'observation', f.observation,
 			'reason', f.reason, 'recommended_fix', f.recommended_fix,
 			'confidence', f.confidence, 'review_status', f.review_status,
-			'original_candidate', f.original_candidate,
+			'created_at', f.created_at, 'original_candidate', f.original_candidate,
+			`+findingTaskJSON+`,
 			'evidence_refs', COALESCE((
 				SELECT json_agg(json_build_object(
 					'evidence_id', fe.evidence_id,

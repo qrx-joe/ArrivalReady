@@ -84,7 +84,12 @@ func (s *Server) finalizeAudit(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusConflict, "run is "+run.Status+"; only REVIEW_REQUIRED runs can be finalized")
 		return
 	}
-	if pending, err := s.DB.PendingReviewCount(r.Context(), actor, auditID); err != nil || pending > 0 {
+	pending, err := s.DB.PendingReviewCount(r.Context(), actor, auditID)
+	if err != nil {
+		writeProblem(w, http.StatusInternalServerError, "query failed")
+		return
+	}
+	if pending > 0 {
 		writeProblem(w, http.StatusUnprocessableEntity,
 			"finalize blocked: pending unreviewed findings")
 		return
@@ -136,11 +141,14 @@ func (s *Server) finalizeAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reportJSON := map[string]any{
-		"dimensions":   report.Dimensions,
-		"total_score":  report.TotalScore,
-		"partial":      report.Partial,
-		"coverage_pct": report.CoveragePct,
-		"blocking":     blocking,
+		// algorithm_version per the contract's AuditRun.scoring schema; bump
+		// only with a scoring-semantics change (ADR-0002).
+		"algorithm_version": "adr-0002-v1",
+		"dimensions":        report.Dimensions,
+		"total_score":       report.TotalScore,
+		"partial":           report.Partial,
+		"coverage_pct":      report.CoveragePct,
+		"blocking":          blocking,
 	}
 	if err := s.DB.FinalizeRun(r.Context(), actor, auditID, mustJSON(reportJSON)); err != nil {
 		writeProblem(w, http.StatusConflict, err.Error())
