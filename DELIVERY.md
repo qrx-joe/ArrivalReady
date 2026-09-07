@@ -45,9 +45,14 @@ P1 未实现：Guest Page、QR、报告导出、多语言 Profile、团队协作
 # 前提：Windows + Go 1.27 + Node 24/pnpm + Python 3.13/uv + PostgreSQL + MinIO
 # 1. 配置模型 key（已由 PO 配置）
 #    services/ai/.env → MODEL_API_KEY / MODEL_BASE_URL / MODEL_ID=step-1o-turbo-vision
+#    缺 key 时 dev-e2e.ps1 才会退回离线 fake（有 key 即走真实模型，自动检出）
 # 2. 启动全栈
 powershell -File scripts\dev-e2e.ps1
-# 3. 打开 http://localhost:3000 → 开发者登录 → 创建项目 → 上传菜单图 → 启动审计
+# 3. 种子数据（三家真实店铺，幂等）
+python scripts\seed_demo.py
+# 4. 打开 http://localhost:3000 → 开发者登录 → 演示动线见 docs/demo/DEMO_SCRIPT.md
 ```
+
+2 分钟版：[docs/demo/arrivalready_demo.mp4](docs/demo/arrivalready_demo.mp4)（配音 + 字幕；分镜与现场动线同见 [docs/demo/DEMO_SCRIPT.md](docs/demo/DEMO_SCRIPT.md)）。
 
 回滚：`git revert` 对应批次 PR 的 merge commit；数据库迁移向前修复为默认策略（执行方案 §7.3）。

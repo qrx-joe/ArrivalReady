@@ -2,6 +2,8 @@
 
 > 在国际访客真正到来之前，验证一家店 / 一个场馆 / 一项城市服务「发现 → 理解 → 决策 → 行动 → 支付 → 求助」的完整体验是否可用，并把问题变成可追踪、可整改、可复测的任务。
 
+**2 分钟看懂**：[演示视频](docs/demo/arrivalready_demo.mp4)（配音+字幕）｜[演示指南](docs/demo/DEMO_SCRIPT.md)｜完成状态以 [DELIVERY.md](DELIVERY.md) 为唯一权威清单。
+
 ## 这是什么
 
 - 面向**供给侧**（商户 / 场馆 / 商圈 / 文旅）的国际访客接待准备度验收系统；
@@ -18,6 +20,7 @@
 | 04 | [docs/04_DOCUMENT_REVIEW_2026-09-07.md](docs/04_DOCUMENT_REVIEW_2026-09-07.md) | 文档审查：16 项实施缺口、原文依据与关闭标准 |
 | 05 | [docs/05_EXECUTION_PLAN_v0.1.md](docs/05_EXECUTION_PLAN_v0.1.md) | 详细执行方案：16 个批次、依赖、验证门禁、提交与数据回滚策略 |
 | — | [docs/requirements-matrix.md](docs/requirements-matrix.md) | 需求矩阵：P0/US → 批次映射与范围裁决状态（暂定/已定可区分） |
+| — | [docs/demo/](docs/demo/DEMO_SCRIPT.md) | 演示视频 + 分镜/配音/现场动线/兜底事项 |
 | — | [docs/adr/](docs/adr/README.md) | 架构决策记录（MADR）索引 |
 | — | [TODO.md](TODO.md) | 当前周期任务清单（滚动更新） |
 | — | [TODO_NEXT.md](TODO_NEXT.md) | 下一阶段任务队列（按依赖排序，带拉入条件） |
@@ -27,11 +30,11 @@
 
 ## 快速开始
 
-当前状态：工程基线（B04）已建立——三端空壳 + 契约 + 离线 CI 可跑；业务功能从 B05 起交付。
+当前状态：MVP 技术切片（B05–B12）已交付并实测——项目/证据上传、真实模型结构化评估（StepFun）、人审四操作、确定性评分、整改任务、复测 Before/After 全链路可跑；URL 抓取、PDF 解析等 P0 项显式未完成，详见 [DELIVERY.md](DELIVERY.md)。
 
 前置（Windows）：
 
-- Go 1.27+（`go.mod` 含 `toolchain go1.27.1`，首次构建自动下载）、Node 24 + pnpm 10、Python 3.13 + uv、Docker Desktop（PostgreSQL 18 + MinIO）；
+- Go 1.27+（`go.mod` 含 `toolchain go1.27.1`，首次构建自动下载）、Node 24 + pnpm 10、Python 3.13 + uv、PostgreSQL 18 + MinIO（Docker 或本机进程，见 [services/api/README](services/api/README.md)）；
 - 大陆网络建议设置 `GOPROXY=https://goproxy.cn,direct`（Makefile 已内置）；
 - Windows 默认无 `make`：优先用 PowerShell 入口 `scripts\dev.ps1`。
 
@@ -42,6 +45,10 @@
 # 启动基础设施 + 三端（各开一个终端窗口）
 Copy-Item .env.example .env   # 首次
 .\scripts\dev.ps1 all
+
+# 演示/体验全栈（AI 侧自动检出真实模型 key；种子数据 + 演示动线见 docs/demo）
+.\scripts\dev-e2e.ps1
+python scripts\seed_demo.py
 ```
 
 Git Bash / WSL 下等价入口：
@@ -56,7 +63,7 @@ make ai          # AI Service :8100
 make web         # Web :3000
 ```
 
-> 注：`make dev`/`migrate` 将随 B05（身份与迁移）落地；数据卷受保护，任何情况不要执行 `docker compose down -v`。
+> 注：`migrate` 已随 B05 落地（`cd services/api && go run ./cmd/migrate up`）；数据卷受保护，任何情况不要执行 `docker compose down -v`。
 
 ## 维护规则
 

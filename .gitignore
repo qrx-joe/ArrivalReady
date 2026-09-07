@@ -57,5 +57,8 @@ apps/web/playwright-report/
 
 # ===== 演示录制产物与本地进程日志 =====
 scripts/demo/artifacts/
+scripts/demo/video/work/
+scripts/demo/video/raw/
+scripts/demo/video/check/
 apps/web/webdev.log
 services/ai/uvicorn.log

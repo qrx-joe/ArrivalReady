@@ -12,6 +12,22 @@
 
 ## 1. 协作会话记录
 
+### S-9 ｜ 2026-09-08 ｜ 演示就绪审查、全链路实测与演示视频（B12 后续）
+- **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
+- **请求**：审查代码、操控电脑做全功能测试，录制 demo 视频兜底；确认无误后分批提交推送；核对演示文档与 README。
+- **结果**：
+  - **演示就绪修复（分支 codex/demo-readiness，4 个修复提交 + 演示/文档提交）**：
+    - GET /audits/{id} 返回 finalize 冻结的 scoring（契约 AuditRun.scoring 本就承诺，实现缺列）；完成态审计页渲染冻结报告——修复前评分环在 finalize 约 2 秒后消失，已完成的 run 完全看不到分数；
+    - GET /findings/{id} 补返回 `task`（懒创建语义合成 OPEN 视图）——修复前整改任务面板在 UI 上永远空壳，任务整改环节无任何可点入口；
+    - DiffEntry 补 json 标签（parent/child 被序列化成大写键，前端 Before/After 表从未显示真实数据）+ 行序按规则键固定 + 对比双查询补组织过滤；
+    - 任务状态机收紧：READY_FOR_RETEST→RESOLVED 要求子复测 run 中同一规则有人审确认 PASS（409 拒绝人工直点）；迁移强制乐观锁版本；edit→NA 不得绕过理由必填；驳回必填 note（对齐 state-machines.md §3/§4）；失败路径集成测试 2 例；
+    - 前端：完成态冻结报告 + 未评维度显示「未评」、审计列表行内快速确认、轮询容错（瞬时失败不再杀死页面）、人审状态中文化、驳回弹窗收理由；
+    - 脚本：dev-e2e.ps1 有真实 key 时不再误开 fake 模型（修复评委指南与交付声明自相矛盾）；verify_loop.py 两处恒真断言改为真实断言。
+  - **全功能实测**：浏览器十步闭环实测通过（登录 → 项目 → 冻结报告 → 证据查看器 → 人审 → finalize → 任务推进 → 无复测 RESOLVED 被拒 409 → 真实模型复测 → 批量确认 → Before/After Diff → 复测 PASS 后 RESOLVED 放行）。Go 全量测试、契约校验、web biome/tsc/vitest 全绿。
+  - **演示视频**：docs/demo/arrivalready_demo.mp4（144s，1080p，中文配音 + 字幕，CN Humanizer 风格文案）；分镜、现场动线、兜底事项与再生成方法见 docs/demo/DEMO_SCRIPT.md。
+- **演示话术边界**：不宣称「URL 抓取/PDF 已完成」（D-021 显式未完成）；不宣称「复测自动置 RESOLVED」（现为复测 PASS + 人审确认后放行，系统校验）；真实模型一次审计约 4–7 分钟，现场优先讲已完成 run。
+- **遗留问题**：本会话运行期间检测到另一并行会话在同一仓库/机器部署公网演示（Cloudflare 隧道 + 临时目录二进制），已通过隔离端口（API :8081 / Web :3001 + 浏览器路由拦截）规避冲突；其部署二进制需重建才能包含本批修复。评审建议项（低优先）：黑盒误读类（未评维度 0 分显示）已修，其余 P2 见审查记录——`retest 对已删除证据返回英文 422`、`AI provider 网络错误未包结构化 failure`、`Finding 响应缺契约可选字段 dimension` 等，留给赛后批次。
+
 ### S-8 ｜ 2026-09-07 ｜ 执行 B07/B08：可恢复任务与真实模型接入
 - **参与方**：Product Owner（乔瑞雪）× ZCode（AI）
 - **决策**：D-016 模型供应商选定阶跃星辰（StepFun），supersedes D-007；API key 由 PO 配置于 services/ai/.env（gitignored，不入库）。
