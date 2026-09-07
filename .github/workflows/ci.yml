@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install validation deps
-        run: pip install pyyaml jsonschema openapi-spec-validator
+        run: pip install pyyaml jsonschema openapi-spec-validator httpx
       - name: IRRS rules schema + fixtures
         run: |
           python scripts/validate_rules.py --fixtures standards/irrs/0.1.0/fixtures
