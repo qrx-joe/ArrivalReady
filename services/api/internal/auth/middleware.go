@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -136,6 +137,19 @@ func NewTestAuthenticator(cfg TestIdentityConfig) (Authenticator, error) {
 
 type testAuthenticator struct {
 	secret []byte
+}
+
+// Sign mints a local test token. It exists ONLY on the test authenticator:
+// real OIDC identities come from the external IdP, never from our code.
+func (t *testAuthenticator) Sign(subject, email string, ttl time.Duration) (string, error) {
+	claims := jwt.MapClaims{
+		"sub":   subject,
+		"email": email,
+		"iss":   "arrivalready-test",
+		"aud":   "arrivalready-dev",
+		"exp":   time.Now().Add(ttl).Unix(),
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(t.secret)
 }
 
 func (t *testAuthenticator) Verify(_ context.Context, rawToken string) (Claims, error) {

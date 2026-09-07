@@ -14,22 +14,22 @@ import (
 // Evidence mirrors the evidence table. SizeBytes/CapturedAt are optional
 // because PENDING_UPLOAD rows may not know them until completion.
 type Evidence struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	OrganizationID   uuid.UUID
-	Type             string
-	SourceNote       string
-	ObjectKey        string
-	SHA256           string
-	MimeType         string
-	JourneyStage     string
-	SizeBytes        *int64
-	ProcessingStatus string
-	QuarantineReason string
-	Fingerprint      string
-	CapturedAt       *time.Time
-	CreatedBy        uuid.UUID
-	CreatedAt        time.Time
+	ID               uuid.UUID  `json:"id"`
+	ProjectID        uuid.UUID  `json:"project_id"`
+	OrganizationID   uuid.UUID  `json:"organization_id"`
+	Type             string     `json:"type"`
+	SourceNote       string     `json:"source_uri_note"`
+	ObjectKey        string     `json:"object_key"`
+	SHA256           string     `json:"sha256"`
+	MimeType         string     `json:"mime_type"`
+	JourneyStage     string     `json:"journey_stage"`
+	SizeBytes        *int64     `json:"size_bytes"`
+	ProcessingStatus string     `json:"processing_status"`
+	QuarantineReason string     `json:"quarantine_reason"`
+	Fingerprint      string     `json:"fingerprint"`
+	CapturedAt       *time.Time `json:"captured_at"`
+	CreatedBy        uuid.UUID  `json:"created_by"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 type CreateEvidenceInput struct {
@@ -158,7 +158,7 @@ func (d *DB) ListEvidence(ctx context.Context, actor auth.Actor, projectID uuid.
 		return nil, err
 	}
 	defer rows.Close()
-	var out []Evidence
+	out := []Evidence{}
 	for rows.Next() {
 		e, err := scanEvidence(rows)
 		if err != nil {

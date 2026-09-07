@@ -160,6 +160,10 @@ type providerResponse struct {
 	Metadata    providerMetadata     `json:"metadata"`
 	Assessments []providerAssessment `json:"assessments"`
 	Error       *providerError       `json:"error"`
+	// Attempts carries per-call usage metadata; its contents are not needed
+	// for persistence, but the field must exist or DisallowUnknownFields
+	// rejects every contract-valid response.
+	Attempts json.RawMessage `json:"attempts"`
 }
 
 type providerMetadata struct {

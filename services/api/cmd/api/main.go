@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/qrx-joe/ArrivalReady/services/api/internal/api"
@@ -66,6 +67,13 @@ func main() {
 	objectStore := buildObjectStore(cfg, logger)
 	auditSvc, workerSvc := buildAudit(cfg, logger, pool, objectStore)
 
+	var testSigner api.DevTokenSigner // non-nil only with the local test identity
+	if ta, ok := authn.(interface {
+		Sign(string, string, time.Duration) (string, error)
+	}); ok {
+		testSigner = ta
+	}
+
 	var db *store.DB
 	var evidenceSvc *evidence.Service
 	if pool != nil && objectStore != nil {
@@ -76,24 +84,43 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
-	r.Mount("/", health.NewHandler(pool).Routes())
+	// Browser origin allowlist (docs/03 §4.3 CORS allowlist); the API uses
+	// Bearer tokens, so credentials stay off.
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{cfg.WebOrigin},
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "Idempotency-Key"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
+	health.NewHandler(pool).RegisterRoutes(r)
 
-	// Protected routes fail closed: without a database there is no user
-	// lookup, without an authenticator there is no identity, and without
-	// object storage uploads cannot validate — 503 with a reason, never a
-	// silent bypass.
-	if authn != nil && db != nil && evidenceSvc != nil {
-		server := &api.Server{DB: db, Evidence: evidenceSvc, Audit: auditSvc}
-		r.Group(func(pr chi.Router) {
-			pr.Use(auth.Middleware(authn, db))
-			pr.Mount("/", server.Routes())
-		})
-	} else {
-		r.HandleFunc("/*", func(w http.ResponseWriter, _ *http.Request) {
-			writeProblem(w, http.StatusServiceUnavailable,
-				"service degraded: authenticator, database or object storage not configured")
-		})
-	}
+	// Business API under /api/v1 (TECH_SPEC §9); health probes stay at root.
+	// Fail closed: without a database there is no user lookup, without an
+	// authenticator there is no identity, without object storage uploads
+	// cannot validate — 503 with a reason, never a silent bypass.
+	r.Route("/api/v1", func(v chi.Router) {
+		// Dev identity minting: registered only when the local test identity
+		// is active. No route, no runtime bypass (B05 step ⑤).
+		if testSigner != nil && pool != nil && cfg.Env == "dev" {
+			dev := &api.DevIdentity{DB: &store.DB{Pool: pool}, Signer: testSigner,
+				Email: cfg.DevUserEmail}
+			dev.RegisterRoutes(v)
+		}
+
+		if authn != nil && db != nil && evidenceSvc != nil {
+			server := &api.Server{DB: db, Evidence: evidenceSvc, Audit: auditSvc}
+			v.Group(func(pr chi.Router) {
+				pr.Use(auth.Middleware(authn, db))
+				server.RegisterRoutes(pr)
+			})
+		} else {
+			v.HandleFunc("/*", func(w http.ResponseWriter, _ *http.Request) {
+				writeProblem(w, http.StatusServiceUnavailable,
+					"service degraded: authenticator, database or object storage not configured")
+			})
+		}
+	})
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

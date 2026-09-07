@@ -25,11 +25,9 @@ type Server struct {
 	Audit    *audit.Service
 }
 
-// Routes builds the protected API. The auth middleware is applied by the
-// caller (main) so liveness/readiness stay outside authentication.
-func (s *Server) Routes() http.Handler {
-	r := chi.NewRouter()
-
+// RegisterRoutes registers the protected API on the caller's router; the
+// auth middleware is applied by main so liveness/readiness stay outside it.
+func (s *Server) RegisterRoutes(r chi.Router) {
 	r.Post("/projects", s.createProject)
 	r.Get("/projects", s.listProjects)
 	r.Get("/projects/{projectID}", s.getProject)
@@ -49,8 +47,7 @@ func (s *Server) Routes() http.Handler {
 	r.Get("/projects/{projectID}/audits", s.listAudits)
 	r.Get("/audits/{auditID}", s.getAudit)
 	r.Post("/audits/{auditID}/cancel", s.cancelAudit)
-
-	return r
+	r.Get("/findings/{findingID}", s.getFinding)
 }
 
 func requireIdempotencyKey(next http.Handler) http.Handler {
@@ -374,4 +371,19 @@ func writeProblem(w http.ResponseWriter, code int, detail string) {
 		"status": code,
 		"detail": detail,
 	})
+}
+
+func (s *Server) getFinding(w http.ResponseWriter, r *http.Request) {
+	actor, _ := auth.ActorFrom(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "findingID"))
+	if err != nil {
+		writeProblem(w, http.StatusUnprocessableEntity, "invalid finding id")
+		return
+	}
+	finding, err := s.DB.GetFindingJSON(r.Context(), actor, id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeProblem(w, http.StatusNotFound, "finding not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, envelope(finding, r))
 }

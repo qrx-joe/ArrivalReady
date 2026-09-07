@@ -37,6 +37,11 @@ type Config struct {
 	// StandardsRulesPath overrides the bound rules.yaml (default: repo layout).
 	StandardsRulesPath string
 
+	// WebOrigin is the browser origin allowed by CORS (WEB_ORIGIN).
+	WebOrigin string
+	// DevUserEmail is the default local test identity (DEV_USER_EMAIL, dev only).
+	DevUserEmail string
+
 	// S3-compatible object storage (B06). Local dev: MinIO from compose.
 	S3Endpoint  string // e.g. localhost:9000
 	S3Bucket    string
@@ -85,6 +90,8 @@ func Load() (Config, error) {
 		OIDCAudience:        os.Getenv("OIDC_AUDIENCE"),
 		OIDCJWKSURL:         os.Getenv("OIDC_JWKS_URL"),
 		StandardsRulesPath:  os.Getenv("STANDARDS_RULES_PATH"),
+		WebOrigin:           envOr("WEB_ORIGIN", "http://localhost:3000"),
+		DevUserEmail:        envOr("DEV_USER_EMAIL", "dev@arrivalready.local"),
 		S3Endpoint:          os.Getenv("S3_ENDPOINT"),
 		S3Bucket:            envOr("S3_BUCKET", "arrivalready-evidence"),
 		S3AccessKey:         os.Getenv("S3_ACCESS_KEY"),

@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // Pinger abstracts the dependency check so handlers stay testable without a
@@ -32,11 +34,11 @@ type Handler struct {
 
 func NewHandler(pinger Pinger) *Handler { return &Handler{pinger: pinger} }
 
-func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", h.liveness)
-	mux.HandleFunc("GET /readyz", h.readiness)
-	return mux
+// RegisterRoutes registers the probes on the caller's router (chi supports
+// the same Go 1.22 method patterns); the handler type stays for tests.
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.HandleFunc("GET /healthz", h.liveness)
+	r.HandleFunc("GET /readyz", h.readiness)
 }
 
 func (h *Handler) liveness(w http.ResponseWriter, _ *http.Request) {
