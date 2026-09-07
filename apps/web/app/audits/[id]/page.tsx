@@ -257,8 +257,11 @@ export default function AuditPage() {
                   disabled={busy}
                   onClick={async () => {
                     setBusy(true);
+                    setError(null);
                     try {
                       setDiff(await api.getDiff(run.id));
+                    } catch (e) {
+                      setError(e instanceof ApiError ? e.message : "对比加载失败");
                     } finally {
                       setBusy(false);
                     }
