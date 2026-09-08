@@ -54,12 +54,12 @@ const open = `
 
 const engineering = `
 <div class="stage">
-  <div class="kicker">工 程 底 座</div>
+  <div class="kicker">底 下 的 规 矩</div>
   <div class="chips">
-    <div class="chip c1"><b>确定性评分</b><span>总分只在 Go 侧按标准版本计算，模型碰不到</span></div>
-    <div class="chip c2"><b>契约先行</b><span>OpenAPI + JSON Schema，跨语言边界不改口</span></div>
-    <div class="chip c3"><b>可恢复任务</b><span>SKIP LOCKED 领取 · 租约 · 崩溃后接着跑</span></div>
-    <div class="chip c4"><b>租户隔离</b><span>跨组织访问一律 fail closed</span></div>
+    <div class="chip c1"><b>分数机器算</b><span>按固定公式，AI 说了不算</span></div>
+    <div class="chip c2"><b>结果可复现</b><span>同一套材料换台电脑跑，一分不差</span></div>
+    <div class="chip c3"><b>中断接着跑</b><span>任务卡住、宕机，重启续上</span></div>
+    <div class="chip c4"><b>数据各归各家</b><span>A 家的材料，B 家永远看不到</span></div>
   </div>
 </div>`;
 
