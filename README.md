@@ -2,7 +2,7 @@
 
 > 在国际访客真正到来之前，验证一家店 / 一个场馆 / 一项城市服务「发现 → 理解 → 决策 → 行动 → 支付 → 求助」的完整体验是否可用，并把问题变成可追踪、可整改、可复测的任务。
 
-**2 分钟看懂**：[演示视频](docs/demo/arrivalready_demo.mp4)（配音+字幕）｜[演示指南](docs/demo/DEMO_SCRIPT.md)｜完成状态以 [DELIVERY.md](DELIVERY.md) 为唯一权威清单。
+**2 分钟看懂**：[演示视频](docs/demo/arrivalready_demo.mp4)（配音+字幕）｜[展示 PDF](docs/demo/arrivalready_showcase.pdf)（评委向 11 页，[PPTX](docs/demo/arrivalready_showcase.pptx) 含讲稿备注）｜[演示指南](docs/demo/DEMO_SCRIPT.md)｜完成状态以 [DELIVERY.md](DELIVERY.md) 为唯一权威清单。
 
 ## 这是什么
 
